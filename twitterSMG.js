@@ -8,9 +8,21 @@ require('mongodb');
 require('twitter');
 require('sentiment');
 
-
 // Package version
 var VERSION = require('../package.json').version;
+console.log(VERSION);
+
+class twitterSMG {
+
+  sample() {
+    console.log('sample');
+  }
+
+  start() {
+    console.log('start');
+  }
+
+};
 
 /**
  * Adds commas to a number
@@ -33,23 +45,21 @@ var VERSION = require('../package.json').version;
 
 module.exports = {
   initiate: function ( params ) {
-
-    return Object(params);
+    return ; //Object(params)
   },
   connect: function ( host, db, collection) {
-    return Object(connection);
+    return ; //Object(connection)
   },
   createDb: function() {
     var finished = true;
-    return Boolean(finished);
+    return ; // Boolean(finished)
   },
   sample: function( connParams, amount ) {
-    return Object(sampleTweets);
+    return ; // Object(sampleTweets)
   },
   analyze: function( connParams, amount ) {
-    return Object(histograms);
+    return ; // Object(histograms)
   }
-
 };
 
   // escape: function(html) {

@@ -2,7 +2,7 @@
 
 var should = require('chai').should(),
     expect = require('chai').expect,
-    twitterSMG = require('../index'),
+    twitterSMG = require('./twitterSMG'),
     // escape = scapegoat.escape,
     // unescape = scapegoat.unescape,
     initiate = twitterSMG.initiate;

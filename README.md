@@ -45,6 +45,8 @@ A small library providing utility methods to `escape` and `unescape` HTML entiti
     timeout_ms:           60*1000,  // optional HTTP request timeout to apply to all requests.
   });
 
+  smg.sample();
+  
   smg.start();
 
 ## Tests
