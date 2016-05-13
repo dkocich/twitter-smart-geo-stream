@@ -1,0 +1,34 @@
+{
+  "name": "twitter-smart-geo-stream",
+  "version": "0.0.1",
+  "description": "This project uses only stream of geospatial data coming from public Twitter stream. This project is an outcome of my analysis of spatial data and tries to use machine learning methods to learn current parameters of the stream and then offers to store and further analyze only relevant data.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dkocich/twitter-smart-geo-stream.git"
+  },
+  "keywords": [
+    "Twitter",
+    "geospatial",
+    "stream"
+  ],
+  "author": "DavidK <dkocich@gmail.com> (https://github.com/dkocich)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dkocich/twitter-smart-geo-stream/issues"
+  },
+  "homepage": "https://github.com/dkocich/twitter-smart-geo-stream#readme",
+  "devDependencies": {
+    "async": "^2.0.0-rc.4",
+    "chai": "^3.5.0",
+    "mocha": "^2.4.5",
+    "mongodb": "^2.1.18",
+    "mongojs": "^2.4.0",
+    "pg": "^4.5.5",
+    "sentiment": "^1.0.6",
+    "twitter": "^1.2.5"
+  }
+}
