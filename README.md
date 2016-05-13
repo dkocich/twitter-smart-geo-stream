@@ -24,19 +24,28 @@ A small library providing utility methods to `escape` and `unescape` HTML entiti
 
 ## Usage
 
-  var smartGeoStream = require('twitter-smart-geo-stream');
+  var twitterSMG = require('twitter-smart-geo-stream');
 
+  var sanFrancisco = [ '-122.75', '36.8', '-121.75', '37.8' ]
 
+  var smg = new twitterSMG({
+    locations:            sanFrancisco,
+    sample_size:          100,
+    calculateStatistics:  true,
+    useMongoDB:           true,
+    hostMongo:            'localhost',
+    portMongo:            '27017',
+    calcSentiment:        true,
+    filterSpam:           true,
+    filterByLocation:     true,
+    consumer_key:         '...',
+    consumer_secret:      '...',
+    access_token:         '...',
+    access_token_secret:  '...',
+    timeout_ms:           60*1000,  // optional HTTP request timeout to apply to all requests.
+  });
 
-  var scapegoat = require('scapegoat')
-      escape = scapegoat.escape,
-      unescape = scapegoat.unescape;
-
-  var html = '<h1>Hello World</h1>',
-      escaped = escape(html),
-      unescaped = unescape(escaped);
-
-  console.log('html', html, 'escaped', escaped, 'unescaped', unescaped);
+  smg.start();
 
 ## Tests
 
@@ -47,7 +56,9 @@ A small library providing utility methods to `escape` and `unescape` HTML entiti
 In lieu of a formal styleguide, take care to maintain the existing coding style.
 Add unit tests for any new or changed functionality. Lint and test your code.
 
-## Release History - based on http://semver.org/
+## Release History
 
-* 0.1.0 Initial release
+based on http://semver.org/
+
 * 0.1.1 in development...
+* 0.1.0 Initial release
