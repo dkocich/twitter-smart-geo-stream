@@ -30,13 +30,17 @@
     "async": "^2.0.0-rc.4",
     "chai": "^3.5.0",
     "database-cleaner": "^0.13.0",
+    "franc": "^2.0.0",
     "mocha": "^2.4.5",
     "mongodb": "^2.1.18",
     "mongodb-fixtures": "0.0.5",
     "mongojs": "^2.4.0",
     "pg": "^4.5.5",
+    "promise": "^7.1.1",
     "sentiment": "^1.0.6",
+    "turf-inside": "^3.0.12",
     "twit": "^2.2.4",
-    "twitter": "^1.2.5"
+    "twitter": "^1.2.5",
+    "wait-for": "^2.1.1"
   }
 }
