@@ -1,7 +1,7 @@
 Twitter Smart Geospatial Stream
 =========
 
-This project uses only stream of geospatial data coming from public Twitter stream. This project is an outcome of my geospatial analysis of the available data and tries to  utilize my personal experience to prevent others from failure and time wasting with data harmonozation.
+This project uses only stream of geospatial data coming from public Twitter stream. This project is an outcome of my geospatial analysis of the available data and tries to utilize my personal experience to prevent others from time wasting processes with data harmonozation.
 
 I tried to use some machine learning methods to learn current parameters of the stream and then offers to store and further analyze only relevant data. Project is divided to phases:
 
@@ -13,10 +13,8 @@ Phase two
 - create DB and collections on provided connection
 
 Phase three
-- download and store relevant data separately
+- download and store relevant data separately (throw away data that you don't need)
 - filter garbage to special collections
-
-A small library providing utility methods to `escape` and `unescape` HTML entities
 
 ## Installation
 
@@ -24,26 +22,31 @@ A small library providing utility methods to `escape` and `unescape` HTML entiti
 
 ## Usage
 
-  var twitterSMG = require('twitter-smart-geo-stream');
+    var TSMG = require('twitter-smart-geo-stream');
+     var sanFrancisco = [ '-122.75', '36.8', '-121.75', '37.8' ]
 
-  var sanFrancisco = [ '-122.75', '36.8', '-121.75', '37.8' ]
+    var parameters = {
+        track: 'mango',
+        locations: sanFrancisco,
+        sampleSize: 2,
+        calcStats: true,
+        useMongoDB: true,
+        hostMongo: 'localhost',
+        portMongo: '27017',
+        dbMongo: 'twittersmg',
+        checkLanguage: true,
+        calcSentiment: true,
+        filterSpam: false,
+        filterByLocation: false,
+        consumer_key: 'aaa',
+        consumer_secret: 'bbb',
+        access_token: 'ccc',
+        access_token_secret: 'ddd',
+        timeout_ms: 60 * 1000,
+        verbose: 'debug'
+    };
 
-  var smg = new twitterSMG({
-    locations:            sanFrancisco,
-    sample_size:          100,
-    calculateStatistics:  true,
-    useMongoDB:           true,
-    hostMongo:            'localhost',
-    portMongo:            '27017',
-    calcSentiment:        true,
-    filterSpam:           true,
-    filterByLocation:     true,
-    consumer_key:         '...',
-    consumer_secret:      '...',
-    access_token:         '...',
-    access_token_secret:  '...',
-    timeout_ms:           60*1000,  // optional HTTP request timeout to apply to all requests.
-  });
+    TSMG.twitterSMGstart(parameters);
 
   smg.sample();
   

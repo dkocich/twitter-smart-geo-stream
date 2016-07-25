@@ -40,9 +40,11 @@ const text = require('./data/texts.js').messages;
  * @param parameters.timeout_ms 60 * 1000
  * @param parameters.verbose default 'debug'
  */
-var twitterSMG = function (parameters) {
+var twitterSMGstart = function (parameters) {
     var p = parameters;
     var connString;
+
+    var rNumTotal, rNumIn, rNumOut;
 
     async.series([
         /**
@@ -106,6 +108,8 @@ var twitterSMG = function (parameters) {
             if (p.dbMongo == undefined) p.dbMongo = 'twittersmg';
             if (p.checkLanguage == undefined) p.checkLanguage = false;
             if (p.calcSentiment == undefined) p.calcSentiment = false;
+            if (p.checkSource == undefined) p.checkSource = false;
+            if (p.sourceType == undefined) p.sourceType = false;
             if (p.filterSpam == undefined) p.filterSpam = false;
             if (p.filterByLocation == undefined) p.filterByLocation = false;
             if (p.timeout_ms == undefined) p.timeout_ms = 60 * 1000;
@@ -202,7 +206,6 @@ var twitterSMG = function (parameters) {
             // console.log(T.consumer_key, T.consumer_secret, T.access_token, T.access_token_secret);
             // console.log(T.config.consumer_key, T.config.consumer_secret, T.config.access_token, T.config.access_token_secret);
 
-
             /**
              * calculates all kinds of other parameters
              * @param tweet Object One incoming tweet
@@ -255,11 +258,10 @@ var twitterSMG = function (parameters) {
 
                 }
 
-
                 // TODO ZISKEJ CASOVOU ZONU Z POLOHY UZIVATELE
                 // a ) turf a prunik s polygonem s atributy casove zony
                 // b ) nejaky modul pro prevod souradnice na TZ
-                
+
                 // if (tweet.coordinates) {
                 //     console.log(tweet.coordinates);
                 // } else if (tweet.place) {
@@ -296,15 +298,15 @@ var twitterSMG = function (parameters) {
 
 
             };
-
-            var saveToDb = function (tweet) {
-
-            };
+            //
+            // var saveToDb = function (tweet) {
+            //
+            // };
 
             //TODO UDELEJ VZOREK
 
-            if (p.verbose = '') { //debug //TODO zamenit debug
-                console.log('debug');
+            if (p.verbose == 'debug') {
+                console.log('THIS IS DEBUG MODE');
                 var sampleSizeCounter = 0;
                 //
                 // stream a sample of public statuses
@@ -327,15 +329,15 @@ var twitterSMG = function (parameters) {
 
                     processTweet(tweet);
 
-                    saveToDb(tweet);
+                    // saveToDb(tweet);
 
                     //TODO ULOZ VZOREK DO DB
                 });
 
-            } else {
+            } else if (p.verbose == 'production') {
 
                 // TODO
-                openDb('production');
+                openDb('THIS IS PRODUCTION MODE');
 
                 var stream = T.stream('statuses/filter', {
                     // track: p.track,
@@ -389,9 +391,8 @@ var twitterSMG = function (parameters) {
                  * MAIN PART AND LOGIC IS HERE
                  */
                 stream.on('tweet', function (tweet) {
+                    rNumTotal++;
                     var date = new Date().toISOString();
-                    console.log(date, tweet.lang, tweet.user.lang, tweet.text);
-                    // return console.log(tweet);
 
                     sampleSizeCounter++;
 
@@ -400,10 +401,40 @@ var twitterSMG = function (parameters) {
                         //callback();
                     }
 
+                    console.log(date, tweet.lang, tweet.user.lang, tweet.text);
+
+                    // return console.log(tweet);
+                    console.log(p.checkSource);
+
+                    if (p.checkSource) {
+                        switch (p.sourceType) {
+                            case 'human':
+
+                                if (tweet.source == '<a href="http://twitter.com/download/iphone" rel="nofollow">Twitter for iPhone</a>') {
+                                    console.log(tweet.source);
+                                    console.log(p.sourceType);
+                                    return;
+                                }
+                                // || '<a href="http://instagram.com" rel="nofollow">Instagram</a>'
+                                // || '<a href="http://twitter.com" rel="nofollow">Twitter Web Client</a>':
+                                break;
+
+                            case 'meteo':
+
+                                break;
+
+                            default:
+
+                        }
+                    }
+
+                    //
+                    //
+
+
                     processTweet(tweet);
 
                     // saveToDb(tweet);
-
 
                 });
             }
@@ -414,6 +445,11 @@ var twitterSMG = function (parameters) {
          */
         this.calcStats = function (callback) {
             console.log('... calcStats() ===     pocitam statistiky');
+
+
+            console.log('... total / rNumIn / rNumOut', rNumTotal, rNumIn, rNumOut)
+
+
 
             callback();
 
@@ -429,13 +465,12 @@ var twitterSMG = function (parameters) {
     ]);
 };
 
-var flog = function (a) {
-    return console.log(a);
-};
+// var flog = function (a) {
+//     return console.log(a);
+// };
 
 module.exports = {
-    twitterSMG: twitterSMG,
-    flog: flog
+    twitterSMGstart: twitterSMGstart
 };
 
 
