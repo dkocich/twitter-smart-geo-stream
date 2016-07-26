@@ -4,6 +4,7 @@
 
 //funguje
 var Twit = require('twit');
+require('mongodb');
 
 var T = new Twit({
     consumer_key: 'ieEKT1apDrIcnjlt8wR4yOqFf',
@@ -13,12 +14,16 @@ var T = new Twit({
     timeout_ms: 60*1000  // optional HTTP request timeout to apply to all requests.
 });
 
+
+
+
 var stream = T.stream('statuses/sample');
 
 stream.on('tweet', function (tweet) {
 
     var date = new Date().toISOString();
-    console.log(date, tweet.lang, tweet.user.lang, tweet.text);
+    //console.log(date, tweet.lang, tweet.user.lang, tweet.text);
 
+    console.log(tweet.user.id_str);
 
 });
