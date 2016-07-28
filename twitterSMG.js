@@ -42,13 +42,20 @@ const text = require('./data/texts.js').messages;
  */
 var twitterSMGstart = function (parameters) {
     var p = parameters;
-    var connString;
+    var connString, pgConnString;
 
     var rNumTotal, rNumIn, rNumOut;
 
+
+    /**
+     * ASYNC SERIES OF PROCESSES
+     */
     async.series([
+
         /**
-         * Adds commas to a number
+         *
+         * FIRST ASYNC STEP
+         *
          */
         this.start = function (callback) {
             console.log('... DEBUGLOG start() === spusteno');
@@ -67,8 +74,12 @@ var twitterSMGstart = function (parameters) {
 
         /**
          *
+         *  SECOND ASYNC STEP
+         *
          */
         this.testLog = function (callback) {
+
+            // log all parameters
             if (p.verbose === 'debug') {
                 console.log('... DEBUGLOG ===== STARTING WITH THESE PARAMS ===== ' + '\n',
                     'locations:             ', p.locations + '\n',
@@ -91,6 +102,7 @@ var twitterSMGstart = function (parameters) {
                 );
             }
 
+            // detect missing access keys and finish
             if (p.consumer_key == undefined ||
                 p.consumer_secret == undefined ||
                 p.access_token == undefined ||
@@ -98,9 +110,10 @@ var twitterSMGstart = function (parameters) {
                 throw new error('MISSING ACCESS KEYS');
             }
 
+            // set default values for non-set parameters
             if (p.track == undefined) p.track = undefined;
             if (p.locations == undefined) p.locations = ['-180.0 , -90.0 , 180.0 , 90.0'];
-            if (p.sampleSize == undefined) p.sampleSize = 1000;
+            if (p.sampleSize == undefined) p.sampleSize = 100;
             if (p.calcStats == undefined) p.calcStats = false;
             if (p.useMongoDB == undefined) p.useMongoDB = false;
             if (p.hostMongo == undefined) p.hostMongo = 'localhost';
@@ -115,43 +128,68 @@ var twitterSMGstart = function (parameters) {
             if (p.timeout_ms == undefined) p.timeout_ms = 60 * 1000;
             if (p.verbose == undefined) p.verbose = 'debug';
 
+            // init connection string to MongoDB
             connString = 'mongodb://' + p.hostMongo + ':' + p.portMongo + '/' + p.dbMongo;
             console.log(connString);
+
+            // TODO init connection string to PostgreSQL
+            // pgConnString = 'postgresql://' + p.hostPg  + ':' + p.portPg + '/' + p.dbPg ;
 
             callback();
         },
 
         /**
-         * clean old db
+         *
+         * THIRD ASYNC STEP
+         * clean old databases from MongoDB
          */
         this.cleanDb = function (callback) {
 
-            var databaseCleaner = new DatabaseCleaner('mongodb');
-            var connect = require('mongodb').connect;
+            // clean only on debug to prevent from loosing data
+            if (p.verbose == 'debug') {
 
-            // var connString = 'mongodb://localhost/' + p.dbMongo;
-            // console.log('...cleanDb() ===      ', connString);
+                var databaseCleaner = new DatabaseCleaner('mongodb');
+                var connect = require('mongodb').connect;
 
-            connect(connString, function (err, db, p) {
-                databaseCleaner.clean(db, function () {
-                    console.log('...cleanDb() ===       cleaning done');
-                    db.close();
+                // var connString = 'mongodb://localhost/' + p.dbMongo;
+                // console.log('...cleanDb() ===      ', connString);
 
-                    callback();
+                connect(connString, function (err, db, p) {
+
+                    // delete all collections in DB
+                    databaseCleaner.clean(db, function () {
+                        console.log('...cleanDb() ===       cleaning done');
+                        db.close();
+                        callback(); // clear and end in debug
+                    });
+
                 });
-            });
+
+                // end directly in production
+            } else {
+                callback();
+            }
         },
 
         /**
-         * init new db
+         *
+         * FOURTH ASYNC STEP
+         *
          */
         this.initDb = function (callback) {
+
+            // only when we want to use MongoDB
             if (p.useMongoDB) {
+
                 //connect to db
                 MongoClient.connect(connString, function (err, db) {
+
+                    // end on error connecting?
                     if (err) throw err;
+
                     console.log('...initDb() ===        connected to ', p.dbMongo);
-                    //create collection
+
+                    // create collections with timestamp
                     db.createCollection('unknown', function (err, collection) {
                         if (err) throw err;
                     });
@@ -171,18 +209,34 @@ var twitterSMGstart = function (parameters) {
 
                     callback();
                 });
+
+                // end directly when we dont use MongoDB
             } else {
                 callback();
             }
+
+            // // TODO only when we want to use PostgreSQL
+            // if (p.usePostgresql) {
+            //     //connect to db
+            //         callback();
+            //
+            //     // end directly when we dont use MongoDB
+            // } else {
+            //     callback();
+            // }
+
         },
 
         /**
-         *  udelej vzorek tweetu
+         *
+         *  FIFTH ASYNC STEP
+         *
          */
         this.sampleOrStream = function (callback) {
             console.log('... sample() ===        sampling/streaming begins');
-            //TODO PRIPOJ TWITTER
 
+            //TODO PRIPOJ TWITTER
+            // init Twitter connection keys
             var T = new Twit({
                 consumer_key: p.consumer_key,
                 consumer_secret: p.consumer_secret,
@@ -211,52 +265,106 @@ var twitterSMGstart = function (parameters) {
              * @param tweet Object One incoming tweet
              */
             var processTweet = function (tweet) {
-                if (p.verbose === 'debug') console.log(p.checkLanguage, p.calcSentiment);
 
-                if (p.checkLanguage = true) {
-                    if (p.verbose === 'debug') console.log('checkLanguage');
+                var dateNow = new Date().toISOString();
+                console.log(dateNow, tweet.lang, tweet.user.lang, tweet.text);
+
+                // return console.log(tweet);
+                console.log(p.checkSource);
+
+                // if (p.checkSource) {
+                //     switch (p.sourceType) {
+                //         case 'human':
+                //
+                //             if (tweet.source == '<a href="http://twitter.com/download/iphone" rel="nofollow">Twitter for iPhone</a>') {
+                //                 console.log(tweet.source);
+                //                 console.log(p.sourceType);
+                //                 return;
+                //             }
+                //             // || '<a href="http://instagram.com" rel="nofollow">Instagram</a>'
+                //             // || '<a href="http://twitter.com" rel="nofollow">Twitter Web Client</a>':
+                //             break;
+                //
+                //         case 'meteo':
+                //
+                //             break;
+                //
+                //         default:
+                //
+                //     }
+                // }
+
+                /**
+                 * detect language
+                 */
+                if (p.checkLanguage == true) {
+                    if (p.verbose === 'debug') console.log('checkLanguage is set to ... ', p.checkLanguage);
 
                     var francRes = franc(tweet.text);
                     // console.log(francRes); // 'eng', 'nld', 'und' ...
                     tweet.francR = francRes;
                 }
 
-                if (p.calcSentiment = true) {
-                    if (p.verbose === 'debug') console.log('calcSentiment');
+                /**
+                 * calculate text sentiment value
+                 */
+                if (p.calcSentiment == true) {
+                    if (p.verbose === 'debug') console.log('calcSentiment is set to ... ', p.calcSentiment);
 
-                    if (tweet.lang === 'en' /*&& francRes === 'eng'*/) {
-                        var sentResEn = sentiment(tweet.text);
-                        tweet.sentR = sentResEn;
-                        // en en FUCK I ACCIDNETSLLY SCROLLED ALL THE WAY UP I HATE SAFARI
-
-                        // console.log(sentResEn);
-
-                        // { score: -7,
-                        //     comparative: -0.6363636363636364,
-                        //     tokens:
-                        //     [ 'fuck',
-                        //         'i',
-                        //         'accidnetslly',
-                        //         'scrolled',
-                        //         'all',
-                        //         'the',
-                        //         'way',
-                        //         'up',
-                        //         'i',
-                        //         'hate',
-                        //         'safari' ],
-                        //         words: [ 'hate', 'fuck' ],
-                        //     positive: [],
-                        //     negative: [ 'hate', 'fuck' ] }
-                    }
+                    // if (tweet.lang === 'en' /*&& francRes === 'eng'*/) {
+                    //     var sentResEn = sentiment(tweet.text);
+                    //     tweet.sentR = sentResEn;
+                    //     // en en FUCK I ACCIDNETSLLY SCROLLED ALL THE WAY UP I HATE SAFARI
+                    //
+                    //     // console.log(sentResEn);
+                    //
+                    //     // { score: -7,
+                    //     //     comparative: -0.6363636363636364,
+                    //     //     tokens:
+                    //     //     [ 'fuck',
+                    //     //         'i',
+                    //     //         'accidnetslly',
+                    //     //         'scrolled',
+                    //     //         'all',
+                    //     //         'the',
+                    //     //         'way',
+                    //     //         'up',
+                    //     //         'i',
+                    //     //         'hate',
+                    //     //         'safari' ],
+                    //     //         words: [ 'hate', 'fuck' ],
+                    //     //     positive: [],
+                    //     //     negative: [ 'hate', 'fuck' ] }
+                    // }
 
                     // TODO DOPLNIT NEMECKY SENTIMENT CALCULATOR
-                    if (tweet.lang === 'de' && francRes === 'deu') {
-                        // var sentResDe =
-                        // tweet.sentR = sentResDe;
-                    }
+                    // if (tweet.lang === 'de' && francRes === 'deu') {
+                    //     // var sentResDe =
+                    //     // tweet.sentR = sentResDe;
+                    // }
 
                 }
+
+                /**
+                 * TODO calculate local time from coordinates
+                 */
+                // if (p.calcLocalT == true) {
+                //
+                //     // only if there are no coordinates and only "tweet.place" geolocolation type
+                //     if (tweet.coordinates == undefined) {
+                //
+                //         var countryCode = place.country_code; // US, EN, DE, etc.
+                //         // TODO najdi v kod statu v geojsonu se
+                //
+                //         // spocitej ze souradnic casovou zonu
+                //     } else {
+                //
+                //         // var lon = tweet.coordinate.coordinate.1 ;
+                //         // var lat = tweet.coordinate.coordinate.0 ;
+                //     }
+                //
+                //     tweet.localT = resLocalT;
+                // }
 
                 // TODO ZISKEJ CASOVOU ZONU Z POLOHY UZIVATELE
                 // a ) turf a prunik s polygonem s atributy casove zony
@@ -281,21 +389,26 @@ var twitterSMGstart = function (parameters) {
                 // TODO otevrit databazi
 
                 if (accessLevel === 'sample') {
+
                     MongoClient.connect(connString, function (err, db) {
                         if (err) throw err;
+
                         db.collection('sample', function (error, collection) {
                             var sampleCollection = collection;
                         })
+
                     });
                 } else if (accessLevel === 'stream') {
+
                     MongoClient.connect(connString, function (err, db) {
                         if (err) throw err;
+
                         db.collection('production', function (error, collection) {
                             var sampleCollection = collection;
                         })
+
                     });
                 }
-
 
             };
             //
@@ -306,6 +419,7 @@ var twitterSMGstart = function (parameters) {
             //TODO UDELEJ VZOREK
 
             if (p.verbose == 'debug') {
+
                 console.log('THIS IS DEBUG MODE');
                 var sampleSizeCounter = 0;
                 //
@@ -391,49 +505,23 @@ var twitterSMGstart = function (parameters) {
                  * MAIN PART AND LOGIC IS HERE
                  */
                 stream.on('tweet', function (tweet) {
-                    rNumTotal++;
-                    var date = new Date().toISOString();
+                    // rNumTotal++;
 
                     sampleSizeCounter++;
 
-                    if (sampleSizeCounter = p.sampleSize) {
+                    // stop if there is enoguht tweets
+                    if (sampleSizeCounter == p.sampleSize) {
                         stream.stop();
-                        //callback();
+                        callback();
                     }
 
-                    console.log(date, tweet.lang, tweet.user.lang, tweet.text);
-
-                    // return console.log(tweet);
-                    console.log(p.checkSource);
-
-                    if (p.checkSource) {
-                        switch (p.sourceType) {
-                            case 'human':
-
-                                if (tweet.source == '<a href="http://twitter.com/download/iphone" rel="nofollow">Twitter for iPhone</a>') {
-                                    console.log(tweet.source);
-                                    console.log(p.sourceType);
-                                    return;
-                                }
-                                // || '<a href="http://instagram.com" rel="nofollow">Instagram</a>'
-                                // || '<a href="http://twitter.com" rel="nofollow">Twitter Web Client</a>':
-                                break;
-
-                            case 'meteo':
-
-                                break;
-
-                            default:
-
-                        }
-                    }
-
-                    //
-                    //
-
-
+                    /**
+                     * tweet - input
+                     * tweet - output
+                     */
                     processTweet(tweet);
-
+                    
+                    // save tweet
                     // saveToDb(tweet);
 
                 });
@@ -441,6 +529,8 @@ var twitterSMGstart = function (parameters) {
         },
 
         /**
+         * 
+         * SIXTH ASYNC STEP
          *  DO STATISTICS
          */
         this.calcStats = function (callback) {
@@ -448,7 +538,6 @@ var twitterSMGstart = function (parameters) {
 
 
             console.log('... total / rNumIn / rNumOut', rNumTotal, rNumIn, rNumOut)
-
 
 
             callback();
