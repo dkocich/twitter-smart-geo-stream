@@ -4,7 +4,7 @@ var TSMG = require('../twitterSMG.js');
 var parameters = {
     track: 'mango',
     locations: ['-125.75', '20.8', '-101.75', '50.8'], // var world = [ '-180.0 , -90.0 , 180.0 , 90.0' ];
-    sampleSize: 100,
+    sampleSize: 3,
     calcStats: true,
     useMongoDB: true,
     hostMongo: 'localhost',
@@ -16,6 +16,7 @@ var parameters = {
     sourceType: 'human',
     checkSpam: false,
     checkByLocation: false,
+    castDateString : true,
     consumer_key: 'ieEKT1apDrIcnjlt8wR4yOqFf', // pouzivane 'h5EUsV1oaCF3Zqi7vwK3Il07v',
     consumer_secret: 'ADIObvcQvp8x01jaMFX4iD5oCW9VB5noY9NW6jS558BMhY6n0t', // pouzivane 'KEvWeD9ZWk1LO8pjtBMblYCfvF1E4keZ4y6Uap15MsJe50hYAQ',
     access_token: '120722111-AXtwB0S08MjOJbYJ19sQHxMbLqaFihARLAr0V7hg', // pouzivanne '2832363724-FLoz3awEnhL9xFa1gApfbgFxaVjCc2FheIrlReG',

@@ -3,6 +3,7 @@
 /**
  * Module dependencies
  */
+var moment = require('moment');
 require('mongodb');
 var s = require('sentiment');
 //require('cld');
@@ -52,11 +53,11 @@ var twitterSMGstart = function (parameters) {
      */
     async.series([
 
-        /**
-         *
-         * FIRST ASYNC STEP
-         *
-         */
+    /**
+     *
+     * FIRST ASYNC STEP
+     *
+     */
         this.start = function (callback) {
             console.log('... DEBUGLOG start() === spusteno');
             /*async.series([
@@ -72,11 +73,11 @@ var twitterSMGstart = function (parameters) {
             callback();
         },
 
-        /**
-         *
-         *  SECOND ASYNC STEP
-         *
-         */
+    /**
+     *
+     *  SECOND ASYNC STEP
+     *
+     */
         this.testLog = function (callback) {
 
             // log all parameters
@@ -102,6 +103,9 @@ var twitterSMGstart = function (parameters) {
                 );
             }
 
+            console.dir(p);
+            console.log(p);
+
             // detect missing access keys and finish
             if (p.consumer_key == undefined ||
                 p.consumer_secret == undefined ||
@@ -122,6 +126,7 @@ var twitterSMGstart = function (parameters) {
             if (p.checkLanguage == undefined) p.checkLanguage = false;
             if (p.calcSentiment == undefined) p.calcSentiment = false;
             if (p.checkSource == undefined) p.checkSource = false;
+            if (p.castDateString == undefined ) p.castDateString = false;
             if (p.sourceType == undefined) p.sourceType = false;
             if (p.filterSpam == undefined) p.filterSpam = false;
             if (p.filterByLocation == undefined) p.filterByLocation = false;
@@ -138,11 +143,11 @@ var twitterSMGstart = function (parameters) {
             callback();
         },
 
-        /**
-         *
-         * THIRD ASYNC STEP
-         * clean old databases from MongoDB
-         */
+    /**
+     *
+     * THIRD ASYNC STEP
+     * clean old databases from MongoDB
+     */
         this.cleanDb = function (callback) {
 
             // clean only on debug to prevent from loosing data
@@ -171,11 +176,11 @@ var twitterSMGstart = function (parameters) {
             }
         },
 
-        /**
-         *
-         * FOURTH ASYNC STEP
-         *
-         */
+    /**
+     *
+     * FOURTH ASYNC STEP
+     *
+     */
         this.initDb = function (callback) {
 
             // only when we want to use MongoDB
@@ -227,13 +232,14 @@ var twitterSMGstart = function (parameters) {
 
         },
 
-        /**
-         *
-         *  FIFTH ASYNC STEP
-         *
-         */
+    /**
+     *
+     *  FIFTH ASYNC STEP
+     *
+     */
         this.sampleOrStream = function (callback) {
             console.log('... sample() ===        sampling/streaming begins');
+
 
             //TODO PRIPOJ TWITTER
             // init Twitter connection keys
@@ -266,13 +272,15 @@ var twitterSMGstart = function (parameters) {
              */
             var processTweet = function (tweet) {
 
-                var dateNow = new Date().toISOString();
-                console.log(dateNow, tweet.lang, tweet.user.lang, tweet.text);
+                if (p.verbose == 'debug') {
+                    var dateNow = new Date().toISOString();
+                    console.log(dateNow, tweet.lang, tweet.user.lang, tweet.text);
+                }
 
                 // return console.log(tweet);
-                console.log(p.checkSource);
 
                 // if (p.checkSource) {
+                //if (p.verbose === 'debug') console.log('checkSource is set to ... ', p.checkSource);
                 //     switch (p.sourceType) {
                 //         case 'human':
                 //
@@ -304,6 +312,14 @@ var twitterSMGstart = function (parameters) {
                     // console.log(francRes); // 'eng', 'nld', 'und' ...
                     tweet.francR = francRes;
                 }
+
+                //if(p.castDateString) {  }
+                console.log(tweet.created_at + '\n' + tweet.user.created_at);
+                console.log(typeof (tweet.created_at));
+
+                console.log(new Date(tweet.created_at_d));
+                console.log(new Date(tweet.user.created_at_d));
+                console.log(typeof(tweet.created_at_d))
 
                 /**
                  * calculate text sentiment value
@@ -383,6 +399,26 @@ var twitterSMGstart = function (parameters) {
                 return tweet;
             };
 
+            var calcStreamStats = function (rawTweets) {
+
+
+                console.log('pocitanim aktualni statistiku ', rawTweets.length);
+
+                console.log(' Total # of tweets received ', sampleSizeCounter + '\n',
+                    ' Total # of tweets filtered out ', rNumFiltered + '\n',
+                    ' Total # of tweets passed ', rNumPassed + '\n',
+                    ' Total # of tweets wrong language ', rNumLang + '\n',
+                    ' Total # of tweets coordinates moving around world ', rNumMove + '\n');
+
+                var users = {};
+                for (var i = 0; i < rawTweets.length; i++) {
+                    users[rawTweets[i].user.id_str] = 1 + (users[rawTweets[i].user.id_str] || 0);
+                }
+
+                console.log(' Total users ', users.length);
+
+            }
+
             // TODO
             var openDb = function (accessLevel) {
 
@@ -421,15 +457,13 @@ var twitterSMGstart = function (parameters) {
             if (p.verbose == 'debug') {
 
                 console.log('THIS IS DEBUG MODE');
-                var sampleSizeCounter = 0;
+
                 //
                 // stream a sample of public statuses
                 //
 
                 // TODO
                 openDb('sample');
-
-                var stream = T.stream('statuses/sample');
 
                 stream.on('tweet', function (tweet) {
                     var date = new Date().toISOString();
@@ -449,14 +483,24 @@ var twitterSMGstart = function (parameters) {
                 });
 
             } else if (p.verbose == 'production') {
-
                 // TODO
                 openDb('THIS IS PRODUCTION MODE');
 
-                var stream = T.stream('statuses/filter', {
-                    // track: p.track,
-                    locations: p.locations
-                });
+                //if (p.verbose == 'debug') {
+                //    var stream = T.stream('statuses/sample');
+                //} else if (p.verbose == 'production') {
+                //
+                //}
+                //
+                //var stream = T.stream('statuses/filter', {
+                //    // track: p.track,
+                //    locations: p.locations
+                //});
+                var stream = T.stream('statuses/sample');
+                var sampleSizeCounter = 0;
+                var rNumFiltered, rNumPassed, rNumLang, rNumMove = 0;
+
+                var rawTweets = [];
 
                 /**
                  * VARIOUS STREAM EVENTS DESCRIBED AT TWIT MODULE
@@ -507,20 +551,27 @@ var twitterSMGstart = function (parameters) {
                 stream.on('tweet', function (tweet) {
                     // rNumTotal++;
 
-                    sampleSizeCounter++;
-
-                    // stop if there is enoguht tweets
-                    if (sampleSizeCounter == p.sampleSize) {
-                        stream.stop();
-                        callback();
-                    }
+                    console.log(sampleSizeCounter);
 
                     /**
                      * tweet - input
                      * tweet - output
                      */
                     processTweet(tweet);
-                    
+
+                    rawTweets.push(tweet);
+
+                    sampleSizeCounter++;
+                    // stop if there is enought tweets
+                    if (sampleSizeCounter == p.sampleSize) {
+                        console.log('zastavuji proud')
+                        stream.stop();
+
+                        calcStreamStats(rawTweets);
+
+                        callback();
+                    }
+
                     // save tweet
                     // saveToDb(tweet);
 
@@ -528,16 +579,16 @@ var twitterSMGstart = function (parameters) {
             }
         },
 
-        /**
-         * 
-         * SIXTH ASYNC STEP
-         *  DO STATISTICS
-         */
-        this.calcStats = function (callback) {
-            console.log('... calcStats() ===     pocitam statistiky');
+    /**
+     *
+     * SIXTH ASYNC STEP
+     *  DO STATISTICS
+     */
+        this.calcStatsDb = function (callback) {
 
+            console.log('... calcStats() ===     pocitam statistiky z databaze');
 
-            console.log('... total / rNumIn / rNumOut', rNumTotal, rNumIn, rNumOut)
+            //console.log('... total / rNumIn / rNumOut', rNumTotal, rNumIn, rNumOut);
 
 
             callback();
@@ -551,6 +602,7 @@ var twitterSMGstart = function (parameters) {
             //TODO FUZZY HLEDANI SPAMERU PODLE PROFILU - CIM VIC TWEETU, DATUM ZALOZENI
 
         }
+
     ]);
 };
 

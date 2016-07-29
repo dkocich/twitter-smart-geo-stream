@@ -42,5 +42,8 @@
     "twit": "^2.2.4",
     "twitter": "^1.2.5",
     "wait-for": "^2.1.1"
+  },
+  "dependencies": {
+    "moment": "^2.14.1"
   }
 }
