@@ -23,6 +23,28 @@ console.log(VERSION);
 const text = require('./data/texts.js').messages;
 
 
+const profiler = require('v8-profiler');
+const fs = require('fs');
+var profilerRunning = false;
+
+// https://strongloop.com/strongblog/tips-optimizing-slow-code-in-nodejs/
+// function toggleProfiling() {
+//     if (profilerRunning) {
+//         const profile = profiler.stopProfiling();
+//         console.log('stopped profiling');
+//         profile.export()
+//             .pipe(fs.createWriteStream('./myapp-' + Date.now() + '.cpuprofile'))
+//             .once('error', profiler.deleteAllProfiles)
+//             .once('finish', profiler.deleteAllProfiles);
+//         profilerRunning = false;
+//         return
+//     }
+//     profiler.startProfiling();
+//     profilerRunning = true;
+//     console.log('started profiling');
+// }
+// process.on('SIGUSR2', toggleProfiling);
+
 /**
  * @param parameters.locations LONLAT bounding box (see Twitter documentation - example is ['-180.00', '-90.0', '180.00', '90.0'])
  * @param parameters.sampleSize Number of tweets (default 100)
@@ -43,7 +65,7 @@ const text = require('./data/texts.js').messages;
  */
 var twitterSMGstart = function (parameters) {
     var p = parameters;
-    var connString, pgConnString;
+    var connStringMongo, connStringPg;
 
     var rNumTotal, rNumIn, rNumOut;
 
@@ -53,11 +75,11 @@ var twitterSMGstart = function (parameters) {
      */
     async.series([
 
-    /**
-     *
-     * FIRST ASYNC STEP
-     *
-     */
+        /**
+         *
+         * FIRST ASYNC STEP
+         *
+         */
         this.start = function (callback) {
             console.log('... DEBUGLOG start() === spusteno');
             /*async.series([
@@ -73,38 +95,39 @@ var twitterSMGstart = function (parameters) {
             callback();
         },
 
-    /**
-     *
-     *  SECOND ASYNC STEP
-     *
-     */
+        /**
+         *
+         *  SECOND ASYNC STEP
+         *
+         */
         this.testLog = function (callback) {
 
             // log all parameters
             if (p.verbose === 'debug') {
-                console.log('... DEBUGLOG ===== STARTING WITH THESE PARAMS ===== ' + '\n',
-                    'locations:             ', p.locations + '\n',
-                    'sampleSize:            ', p.sampleSize + '\n',
-                    'calcStats:             ', p.calcStats + '\n',
-                    'useMongoDB:            ', p.useMongoDB + '\n',
-                    'hostMongo:             ', p.hostMongo + '\n',
-                    'portMongo:             ', p.portMongo + '\n',
-                    'dbMongo:               ', p.dbMongo + '\n',
-                    'calcSentiment:         ', p.calcSentiment + '\n',
-                    'filterSpam:            ', p.filterSpam + '\n',
-                    'filterByLocation:      ', p.filterByLocation + '\n',
-                    'consumer_key:          ', p.consumer_key + '\n',
-                    'consumer_secret:       ', p.consumer_secret + '\n',
-                    'access_token:          ', p.access_token + '\n',
-                    'access_token_secret:   ', p.access_token_secret + '\n',
-                    'timeout_ms:            ', p.timeout_ms + '\n',
-                    'verbose:               ', p.verbose + '\n',
-                    ' ===== END LOG ====='
-                );
+                console.log('... DEBUGLOG ===== STARTING WITH THESE PARAMS ===== ');
+                console.log(p);
+                // { track: 'mango',
+                //     locations: [ '-125.75', '20.8', '-101.75', '50.8' ],
+                //     sampleSize: 3,
+                //     calcStats: true,
+                //     useMongoDB: true,
+                //     hostMongo: 'localhost',
+                //     portMongo: '27017',
+                //     dbMongo: 'twittersmg',
+                //     checkLanguage: true,
+                //     calcSentiment: true,
+                //     checkSource: true,
+                //     sourceType: 'human',
+                //     checkSpam: false,
+                //     checkByLocation: false,
+                //     castDateString: true,
+                //     consumer_key: 'ieEKT1apDrIcnjlt8wR4yOqFf',
+                //     consumer_secret: 'ADIObvcQvp8x01jaMFX4iD5oCW9VB5noY9NW6jS558BMhY6n0t',
+                //     access_token: '120722111-AXtwB0S08MjOJbYJ19sQHxMbLqaFihARLAr0V7hg',
+                //     access_token_secret: 'atThRDUy5ARU6VgvuO8a7YsqkKWhF1T4MmuH1WYh28QYK',
+                //     timeout_ms: 60000,
+                //     verbose: 'production' }
             }
-
-            console.dir(p);
-            console.log(p);
 
             // detect missing access keys and finish
             if (p.consumer_key == undefined ||
@@ -119,23 +142,33 @@ var twitterSMGstart = function (parameters) {
             if (p.locations == undefined) p.locations = ['-180.0 , -90.0 , 180.0 , 90.0'];
             if (p.sampleSize == undefined) p.sampleSize = 100;
             if (p.calcStats == undefined) p.calcStats = false;
-            if (p.useMongoDB == undefined) p.useMongoDB = false;
-            if (p.hostMongo == undefined) p.hostMongo = 'localhost';
-            if (p.portMongo == undefined) p.portMongo = '27017';
-            if (p.dbMongo == undefined) p.dbMongo = 'twittersmg';
+
+            if (p.checkSource == undefined) p.checkSource = false;
+            if (p.sourceType == undefined) p.sourceType = false;
+
             if (p.checkLanguage == undefined) p.checkLanguage = false;
             if (p.calcSentiment == undefined) p.calcSentiment = false;
-            if (p.checkSource == undefined) p.checkSource = false;
-            if (p.castDateString == undefined ) p.castDateString = false;
+            if (p.castDateString == undefined) p.castDateString = false;
             if (p.sourceType == undefined) p.sourceType = false;
             if (p.filterSpam == undefined) p.filterSpam = false;
             if (p.filterByLocation == undefined) p.filterByLocation = false;
             if (p.timeout_ms == undefined) p.timeout_ms = 60 * 1000;
             if (p.verbose == undefined) p.verbose = 'debug';
 
+            //db
+            if (p.useMongoDB == undefined) p.useMongoDB = false;
+            if (p.hostMongo == undefined) p.hostMongo = 'localhost';
+            if (p.portMongo == undefined) p.portMongo = '27017';
+            if (p.dbMongo == undefined) p.dbMongo = 'twittersmg';
+
+            if (p.usePg == undefined) p.usePg = false;
+            if (p.hostPg == undefined) p.hostPg = 'localhost';
+            if (p.portPg == undefined) p.portPg = '5432';
+            if (p.dbPg == undefined) p.dbPg = 'twittersmg';
+
             // init connection string to MongoDB
-            connString = 'mongodb://' + p.hostMongo + ':' + p.portMongo + '/' + p.dbMongo;
-            console.log(connString);
+            connStringMongo = 'mongodb://' + p.hostMongo + ':' + p.portMongo + '/' + p.dbMongo;
+            console.log(connStringMongo + '\n' + connStringPg);
 
             // TODO init connection string to PostgreSQL
             // pgConnString = 'postgresql://' + p.hostPg  + ':' + p.portPg + '/' + p.dbPg ;
@@ -143,11 +176,11 @@ var twitterSMGstart = function (parameters) {
             callback();
         },
 
-    /**
-     *
-     * THIRD ASYNC STEP
-     * clean old databases from MongoDB
-     */
+        /**
+         *
+         * THIRD ASYNC STEP
+         * clean old databases from MongoDB
+         */
         this.cleanDb = function (callback) {
 
             // clean only on debug to prevent from loosing data
@@ -156,10 +189,10 @@ var twitterSMGstart = function (parameters) {
                 var databaseCleaner = new DatabaseCleaner('mongodb');
                 var connect = require('mongodb').connect;
 
-                // var connString = 'mongodb://localhost/' + p.dbMongo;
-                // console.log('...cleanDb() ===      ', connString);
+                // var connStringMongo = 'mongodb://localhost/' + p.dbMongo;
+                // console.log('...cleanDb() ===      ', connStringMongo);
 
-                connect(connString, function (err, db, p) {
+                connect(connStringMongo, function (err, db, p) {
 
                     // delete all collections in DB
                     databaseCleaner.clean(db, function () {
@@ -176,18 +209,18 @@ var twitterSMGstart = function (parameters) {
             }
         },
 
-    /**
-     *
-     * FOURTH ASYNC STEP
-     *
-     */
+        /**
+         *
+         * FOURTH ASYNC STEP
+         *
+         */
         this.initDb = function (callback) {
 
             // only when we want to use MongoDB
             if (p.useMongoDB) {
 
                 //connect to db
-                MongoClient.connect(connString, function (err, db) {
+                MongoClient.connect(connStringMongo, function (err, db) {
 
                     // end on error connecting?
                     if (err) throw err;
@@ -232,11 +265,11 @@ var twitterSMGstart = function (parameters) {
 
         },
 
-    /**
-     *
-     *  FIFTH ASYNC STEP
-     *
-     */
+        /**
+         *
+         *  FIFTH ASYNC STEP
+         *
+         */
         this.sampleOrStream = function (callback) {
             console.log('... sample() ===        sampling/streaming begins');
 
@@ -272,11 +305,18 @@ var twitterSMGstart = function (parameters) {
              */
             var processTweet = function (tweet) {
 
+                // http://stackoverflow.com/questions/6549223/javascript-code-to-display-twitter-created-at-as-xxxx-ago
+
                 if (p.verbose == 'debug') {
-                    var dateNow = new Date().toISOString();
-                    console.log(dateNow, tweet.lang, tweet.user.lang, tweet.text);
+
                 }
 
+                var dateNow = new Date().toISOString(); // 2016-07-29T22:51:03.563Z
+                console.log(dateNow, tweet.lang, tweet.user.lang, tweet.text);
+
+                var tweetDate = 'Mon Dec 02 23:45:49 +0000 2013';
+                moment(tweetDate, 'dd MMM DD HH:mm:ss ZZ YYYY', 'en');
+                
                 // return console.log(tweet);
 
                 // if (p.checkSource) {
@@ -426,7 +466,7 @@ var twitterSMGstart = function (parameters) {
 
                 if (accessLevel === 'sample') {
 
-                    MongoClient.connect(connString, function (err, db) {
+                    MongoClient.connect(connStringMongo, function (err, db) {
                         if (err) throw err;
 
                         db.collection('sample', function (error, collection) {
@@ -436,7 +476,7 @@ var twitterSMGstart = function (parameters) {
                     });
                 } else if (accessLevel === 'stream') {
 
-                    MongoClient.connect(connString, function (err, db) {
+                    MongoClient.connect(connStringMongo, function (err, db) {
                         if (err) throw err;
 
                         db.collection('production', function (error, collection) {
@@ -579,11 +619,11 @@ var twitterSMGstart = function (parameters) {
             }
         },
 
-    /**
-     *
-     * SIXTH ASYNC STEP
-     *  DO STATISTICS
-     */
+        /**
+         *
+         * SIXTH ASYNC STEP
+         *  DO STATISTICS
+         */
         this.calcStatsDb = function (callback) {
 
             console.log('... calcStats() ===     pocitam statistiky z databaze');
