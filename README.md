@@ -48,10 +48,6 @@ Phase three
 
     TSMG.twitterSMGstart(parameters);
 
-  smg.sample();
-  
-  smg.start();
-
 ## Tests
 
   npm test
