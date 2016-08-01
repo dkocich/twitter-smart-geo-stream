@@ -1,5 +1,8 @@
 'use strict';
 
+// TODO WRITE SOME TESTS!!!
+// http://thenodeway.io/posts/testing-essentials/
+
 var should = require('chai').should(),
     expect = require('chai').expect,
     twitterSMG = require('./twitterSMG'),

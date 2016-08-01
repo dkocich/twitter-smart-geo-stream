@@ -3,7 +3,8 @@
  * http://papaparse.com/docs#json-to-csv
  * @type {*[]}
  */
-var tweetSources = [
+
+const tweetSources = [
     {
         "idl": "<a href=\"http://twitter.com/download/iphone\" rel=\"nofollow\">Twitter for iPhone</a>",
         "ids": "Twitter for iPhone",
@@ -5413,7 +5414,7 @@ var tweetSources = [
     {
         "idl": "<a href=\"http://mobile.twitter.com\" rel=\"nofollow\">Mobile Web</a>",
         "ids": "Mobile Web",
-        "c": 0,
+        "c": 'human',
         "n": 2
     },
     {
@@ -6911,3 +6912,5 @@ var tweetSources = [
         "n": 1
     }
 ];
+
+exports.tweetSources = tweetSources;

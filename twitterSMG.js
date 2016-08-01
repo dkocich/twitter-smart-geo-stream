@@ -11,16 +11,28 @@ var s = require('sentiment');
 var async = require("async"),
     DatabaseCleaner = require('database-cleaner'),
     MongoClient = require('mongodb').MongoClient,
-    format = require('util').format;
-var Twit = require('twit');
-var franc = require('franc');
-var sentiment = require('sentiment');
+    format = require('util').format,
+    Twit = require('twit');
+
+var franc = require('franc'),
+    sentiment = require('sentiment'),
+    ml = require('ml-sentiment')({lang: 'de'});
+
+// lonlat to TZ
+var tz = require('tz-lookup');
+var turf = require('turf-center');
+
+var geolib = require('geolib');
+
 
 // Package version
 const VERSION = require('./package.json').version;
 console.log(VERSION);
 
 const text = require('./data/texts.js').messages;
+
+const tweetSources = require('./data/tweetSources.js').tweetSources;
+// ----- console.log(tweetSources.length); // 1151
 
 
 const profiler = require('v8-profiler');
@@ -67,8 +79,35 @@ var twitterSMGstart = function (parameters) {
     var p = parameters;
     var connStringMongo, connStringPg;
 
-    var rNumTotal, rNumIn, rNumOut;
+    var rNumTotal,
+        rNumIn,
+        rNumOut,
+        rNumPassed,
+        rNumLang,
+        rNumMove,
+        rNumFilteredSource = 0;
 
+    var sampleSizeCounter = 0;
+    var acceptedSources = [];
+
+    var calcStreamStats = function (rawTweets) {
+
+        console.log('pocitanim aktualni statistiku ', rawTweets.length);
+
+        console.log(' Total # of tweets received ', sampleSizeCounter + '\n',
+            ' Total # of tweets filtered out ', rNumFilteredSource + '\n',
+            ' Total # of tweets passed ', rNumPassed + '\n',
+            ' Total # of tweets wrong language ', rNumLang + '\n',
+            ' Total # of tweets coordinates moving around world ', rNumMove + '\n');
+
+        var users = {};
+        for (var i = 0; i < rawTweets.length; i++) {
+            users[rawTweets[i].user.id_str] = 1 + (users[rawTweets[i].user.id_str] || 0);
+        }
+
+        console.log(' Total users ', users.length);
+
+    };
 
     /**
      * ASYNC SERIES OF PROCESSES
@@ -106,27 +145,6 @@ var twitterSMGstart = function (parameters) {
             if (p.verbose === 'debug') {
                 console.log('... DEBUGLOG ===== STARTING WITH THESE PARAMS ===== ');
                 console.log(p);
-                // { track: 'mango',
-                //     locations: [ '-125.75', '20.8', '-101.75', '50.8' ],
-                //     sampleSize: 3,
-                //     calcStats: true,
-                //     useMongoDB: true,
-                //     hostMongo: 'localhost',
-                //     portMongo: '27017',
-                //     dbMongo: 'twittersmg',
-                //     checkLanguage: true,
-                //     calcSentiment: true,
-                //     checkSource: true,
-                //     sourceType: 'human',
-                //     checkSpam: false,
-                //     checkByLocation: false,
-                //     castDateString: true,
-                //     consumer_key: 'ieEKT1apDrIcnjlt8wR4yOqFf',
-                //     consumer_secret: 'ADIObvcQvp8x01jaMFX4iD5oCW9VB5noY9NW6jS558BMhY6n0t',
-                //     access_token: '120722111-AXtwB0S08MjOJbYJ19sQHxMbLqaFihARLAr0V7hg',
-                //     access_token_secret: 'atThRDUy5ARU6VgvuO8a7YsqkKWhF1T4MmuH1WYh28QYK',
-                //     timeout_ms: 60000,
-                //     verbose: 'production' }
             }
 
             // detect missing access keys and finish
@@ -141,19 +159,26 @@ var twitterSMGstart = function (parameters) {
             if (p.track == undefined) p.track = undefined;
             if (p.locations == undefined) p.locations = ['-180.0 , -90.0 , 180.0 , 90.0'];
             if (p.sampleSize == undefined) p.sampleSize = 100;
+            if (p.timeout_ms == undefined) p.timeout_ms = 60 * 1000;
+            if (p.verbose == undefined) p.verbose = 'debug';
             if (p.calcStats == undefined) p.calcStats = false;
 
             if (p.checkSource == undefined) p.checkSource = false;
+
             if (p.sourceType == undefined) p.sourceType = false;
 
             if (p.checkLanguage == undefined) p.checkLanguage = false;
             if (p.calcSentiment == undefined) p.calcSentiment = false;
             if (p.castDateString == undefined) p.castDateString = false;
-            if (p.sourceType == undefined) p.sourceType = false;
+
+            if (p.calcPlaceCenter == undefined) p.calcPlaceCenter = false;
+            if (p.calcPlaceCenterL == undefined) p.calcPlaceCenterL = 'all';
+
+
+            if (p.calcLocalTime == undefined) p.calcLocalTime = false;
+
             if (p.filterSpam == undefined) p.filterSpam = false;
             if (p.filterByLocation == undefined) p.filterByLocation = false;
-            if (p.timeout_ms == undefined) p.timeout_ms = 60 * 1000;
-            if (p.verbose == undefined) p.verbose = 'debug';
 
             //db
             if (p.useMongoDB == undefined) p.useMongoDB = false;
@@ -172,6 +197,15 @@ var twitterSMGstart = function (parameters) {
 
             // TODO init connection string to PostgreSQL
             // pgConnString = 'postgresql://' + p.hostPg  + ':' + p.portPg + '/' + p.dbPg ;
+
+            // set filtering of tweets source applications
+            if (p.checkSource) {
+                for (var i = 0; i < tweetSources.length; i++) {
+                    if (tweetSources[i].c == p.sourceType) {
+                        acceptedSources.push(tweetSources[i].idl);
+                    }
+                }
+            }
 
             callback();
         },
@@ -304,43 +338,50 @@ var twitterSMGstart = function (parameters) {
              * @param tweet Object One incoming tweet
              */
             var processTweet = function (tweet) {
-
                 // http://stackoverflow.com/questions/6549223/javascript-code-to-display-twitter-created-at-as-xxxx-ago
 
                 if (p.verbose == 'debug') {
 
                 }
 
-                var dateNow = new Date().toISOString(); // 2016-07-29T22:51:03.563Z
-                console.log(dateNow, tweet.lang, tweet.user.lang, tweet.text);
+                if (p.checkSource) {
+                    var found = false;
+                    // console.log(acceptedSources);
+                    for (s = 0; s < acceptedSources.length; s++) {
+                        if (tweet.source == acceptedSources[s]) {
+                            if (p.verbose == 'debug') {
+                                console.log('... DEBUGLOG checkSource === found - continue to analyze');
+                            }
+                            found = true;
+                            break;
+                        }
+                    }
+                    // dont continue when we dont want to track this source
+                    if (found == false) {
+                        rNumFilteredSource++;
+                        if (p.verbose == 'debug') {
+                            console.log('... DEBUGLOG checkSource === not found - take another');
+                        }
+                        return;
+                    }
+                }
 
-                var tweetDate = 'Mon Dec 02 23:45:49 +0000 2013';
-                moment(tweetDate, 'dd MMM DD HH:mm:ss ZZ YYYY', 'en');
-                
-                // return console.log(tweet);
+                /**
+                 * recast string tweet.created_at to date
+                 */
+                if (p.castDateString) {
+                    // var dateNow = new Date().toISOString();
 
-                // if (p.checkSource) {
-                //if (p.verbose === 'debug') console.log('checkSource is set to ... ', p.checkSource);
-                //     switch (p.sourceType) {
-                //         case 'human':
-                //
-                //             if (tweet.source == '<a href="http://twitter.com/download/iphone" rel="nofollow">Twitter for iPhone</a>') {
-                //                 console.log(tweet.source);
-                //                 console.log(p.sourceType);
-                //                 return;
-                //             }
-                //             // || '<a href="http://instagram.com" rel="nofollow">Instagram</a>'
-                //             // || '<a href="http://twitter.com" rel="nofollow">Twitter Web Client</a>':
-                //             break;
-                //
-                //         case 'meteo':
-                //
-                //             break;
-                //
-                //         default:
-                //
-                //     }
-                // }
+                    // console.log(dateNow, tweet.lang, tweet.user.lang, tweet.text);
+                    // 2016-07-29T22:51:03.563Z
+                    // console.log('cas s moment je ... ', moment(tweet.created_at, 'YYYY-MM-DDTHH:mm:ss', 'en'));
+                    var m = new Date(Date.parse(tweet.created_at.replace(/( \+)/, ' UTC$1')));
+                    // var tweetDate = 'Mon Dec 02 23:45:49 +0000 2013';
+                    // var m = Date.parse(tweetDate);
+                    if (p.verbose == 'debug') {
+                        console.log(tweet.created_at, tweet.date, tweet.date.toUTCString());
+                    }
+                }
 
                 /**
                  * detect language
@@ -351,15 +392,10 @@ var twitterSMGstart = function (parameters) {
                     var francRes = franc(tweet.text);
                     // console.log(francRes); // 'eng', 'nld', 'und' ...
                     tweet.francR = francRes;
+
+                    // if (tweet.francR == 'deu') console.log('franc je DE', tweet.text);
+                    // if (tweet.francR == 'cze') console.log('franc je CZE', tweet.text);
                 }
-
-                //if(p.castDateString) {  }
-                console.log(tweet.created_at + '\n' + tweet.user.created_at);
-                console.log(typeof (tweet.created_at));
-
-                console.log(new Date(tweet.created_at_d));
-                console.log(new Date(tweet.user.created_at_d));
-                console.log(typeof(tweet.created_at_d))
 
                 /**
                  * calculate text sentiment value
@@ -367,60 +403,103 @@ var twitterSMGstart = function (parameters) {
                 if (p.calcSentiment == true) {
                     if (p.verbose === 'debug') console.log('calcSentiment is set to ... ', p.calcSentiment);
 
-                    // if (tweet.lang === 'en' /*&& francRes === 'eng'*/) {
-                    //     var sentResEn = sentiment(tweet.text);
-                    //     tweet.sentR = sentResEn;
-                    //     // en en FUCK I ACCIDNETSLLY SCROLLED ALL THE WAY UP I HATE SAFARI
-                    //
-                    //     // console.log(sentResEn);
-                    //
-                    //     // { score: -7,
-                    //     //     comparative: -0.6363636363636364,
-                    //     //     tokens:
-                    //     //     [ 'fuck',
-                    //     //         'i',
-                    //     //         'accidnetslly',
-                    //     //         'scrolled',
-                    //     //         'all',
-                    //     //         'the',
-                    //     //         'way',
-                    //     //         'up',
-                    //     //         'i',
-                    //     //         'hate',
-                    //     //         'safari' ],
-                    //     //         words: [ 'hate', 'fuck' ],
-                    //     //     positive: [],
-                    //     //     negative: [ 'hate', 'fuck' ] }
-                    // }
+                    if (tweet.lang === 'en' /*&& francRes === 'eng'*/) {
+                        var sentResEn = sentiment(tweet.text);
+                        tweet.sentR = sentResEn;
 
-                    // TODO DOPLNIT NEMECKY SENTIMENT CALCULATOR
-                    // if (tweet.lang === 'de' && francRes === 'deu') {
-                    //     // var sentResDe =
-                    //     // tweet.sentR = sentResDe;
-                    // }
+                        /*
+                         en en FUCK I ACCIDNETSLLY SCROLLED ALL THE WAY UP I HATE SAFARI
+                         { score: -7,
+                         comparative: -0.6363636363636364,
+                         tokens:
+                         [ 'fuck',
+                         'i',
+                         'accidnetslly',
+                         'scrolled',
+                         'all',
+                         'the',
+                         'way',
+                         'up',
+                         'i',
+                         'hate',
+                         'safari' ],
+                         words: [ 'hate', 'fuck' ],
+                         positive: [],
+                         negative: [ 'hate', 'fuck' ] }
+                         */
+                    }
 
+                    if (tweet.lang === 'de' /*&& francRes === 'deu'*/) {
+                        var sentResDe = ml.classify(tweet.text);
+                        tweet.sentR = sentResDe;
+                        console.log('NEMECKY JAZYK ´=======================', sentResDe);
+                        console.log(p.calcSentiment, tweet.lang, tweet.text);
+                    }
+
+                }
+
+
+                if (p.calcPlaceCenter == true) {
+                    if (p.calcPlaceCenterL == 'all') {
+
+                        if (tweet.place != undefined) {
+
+                            var center = geolib.getCenter([
+                                {
+                                    latitude: tweet.place.bounding_box.coordinates["0"]["0"]["0"],
+                                    longitude: tweet.place.bounding_box.coordinates["0"]["0"]["1"]
+                                },
+                                {
+                                    latitude: tweet.place.bounding_box.coordinates["0"]["2"]["0"],
+                                    longitude: tweet.place.bounding_box.coordinates["0"]["2"]["1"]
+                                }
+                            ]);
+
+                            var distance = geolib.getDistance(
+                                {
+                                    latitude: 51.5103,
+                                    longitude: 7.49347
+                                },
+                                {
+                                    latitude: "51° 31' N",
+                                    longitude: "7° 28' E"
+                                }
+                            );
+
+                            // tweet.place.bounding_box =
+                            console.log('center is', center); // { latitude: '-62.977546', longitude: '-147.366400' }
+                            console.log('distance is ', distance);
+
+                            tweet.pCenter = [{}];
+                            tweet.pDist = distance;
+                        }
+                    }
                 }
 
                 /**
                  * TODO calculate local time from coordinates
                  */
-                // if (p.calcLocalT == true) {
-                //
-                //     // only if there are no coordinates and only "tweet.place" geolocolation type
-                //     if (tweet.coordinates == undefined) {
-                //
-                //         var countryCode = place.country_code; // US, EN, DE, etc.
-                //         // TODO najdi v kod statu v geojsonu se
-                //
-                //         // spocitej ze souradnic casovou zonu
-                //     } else {
-                //
-                //         // var lon = tweet.coordinate.coordinate.1 ;
-                //         // var lat = tweet.coordinate.coordinate.0 ;
-                //     }
-                //
-                //     tweet.localT = resLocalT;
-                // }
+                if (p.calcLocalTime == true) {
+
+                    // only if there are no coordinates and only "tweet.place" geolocolation type
+                    if (tweet.coordinates == undefined) {
+
+                        if (tweet.place != undefined) {
+
+                            // var countryCode = place.country_code; // US, EN, DE, etc.
+                            console.log ( tz(tweet.pCenter.lat, tweet.pCenter.lon) );
+                        }
+
+                        // spocitej ze souradnic casovou zonu
+                    } else {
+                        var lon = tweet.coordinate.coordinate[1];
+                        var lat = tweet.coordinate.coordinate[0];
+
+                        // Determine the timezone of the White House
+                        console.log(tz(lat, lon));
+                    }
+                    // tweet.localT = resLocalT;
+                }
 
                 // TODO ZISKEJ CASOVOU ZONU Z POLOHY UZIVATELE
                 // a ) turf a prunik s polygonem s atributy casove zony
@@ -439,29 +518,8 @@ var twitterSMGstart = function (parameters) {
                 return tweet;
             };
 
-            var calcStreamStats = function (rawTweets) {
-
-
-                console.log('pocitanim aktualni statistiku ', rawTweets.length);
-
-                console.log(' Total # of tweets received ', sampleSizeCounter + '\n',
-                    ' Total # of tweets filtered out ', rNumFiltered + '\n',
-                    ' Total # of tweets passed ', rNumPassed + '\n',
-                    ' Total # of tweets wrong language ', rNumLang + '\n',
-                    ' Total # of tweets coordinates moving around world ', rNumMove + '\n');
-
-                var users = {};
-                for (var i = 0; i < rawTweets.length; i++) {
-                    users[rawTweets[i].user.id_str] = 1 + (users[rawTweets[i].user.id_str] || 0);
-                }
-
-                console.log(' Total users ', users.length);
-
-            }
-
             // TODO
             var openDb = function (accessLevel) {
-
                 // TODO otevrit databazi
 
                 if (accessLevel === 'sample') {
@@ -522,7 +580,9 @@ var twitterSMGstart = function (parameters) {
                     //TODO ULOZ VZOREK DO DB
                 });
 
-            } else if (p.verbose == 'production') {
+            }
+
+            if (p.verbose == 'production') {
                 // TODO
                 openDb('THIS IS PRODUCTION MODE');
 
@@ -532,13 +592,11 @@ var twitterSMGstart = function (parameters) {
                 //
                 //}
                 //
-                //var stream = T.stream('statuses/filter', {
-                //    // track: p.track,
-                //    locations: p.locations
-                //});
-                var stream = T.stream('statuses/sample');
-                var sampleSizeCounter = 0;
-                var rNumFiltered, rNumPassed, rNumLang, rNumMove = 0;
+                var stream = T.stream('statuses/filter', {
+                    // track: p.track,
+                    locations: p.locations
+                });
+                // var stream = T.stream('statuses/sample');
 
                 var rawTweets = [];
 
@@ -590,31 +648,24 @@ var twitterSMGstart = function (parameters) {
                  */
                 stream.on('tweet', function (tweet) {
                     // rNumTotal++;
-
                     console.log(sampleSizeCounter);
-
                     /**
                      * tweet - input
                      * tweet - output
                      */
                     processTweet(tweet);
-
                     rawTweets.push(tweet);
+                    // save tweet
+                    // saveToDb(tweet);
 
                     sampleSizeCounter++;
                     // stop if there is enought tweets
                     if (sampleSizeCounter == p.sampleSize) {
-                        console.log('zastavuji proud')
+                        console.log('zastavuji proud');
                         stream.stop();
-
                         calcStreamStats(rawTweets);
-
                         callback();
                     }
-
-                    // save tweet
-                    // saveToDb(tweet);
-
                 });
             }
         },
@@ -625,24 +676,15 @@ var twitterSMGstart = function (parameters) {
          *  DO STATISTICS
          */
         this.calcStatsDb = function (callback) {
-
             console.log('... calcStats() ===     pocitam statistiky z databaze');
-
             //console.log('... total / rNumIn / rNumOut', rNumTotal, rNumIn, rNumOut);
-
-
             callback();
 
             //TODO NAJDI AUTORY S VIC NEZ 1 TWEETEM A ZJISTI ODCHYLKY V POLOZE -
-
             //TODO
-
             //TODO NAJDI SPAMY POMOCI DETEKCE JAZYKA - MENSI NEZ X PRISLUSNOST
-
             //TODO FUZZY HLEDANI SPAMERU PODLE PROFILU - CIM VIC TWEETU, DATUM ZALOZENI
-
         }
-
     ]);
 };
 
