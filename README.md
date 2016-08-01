@@ -16,6 +16,12 @@ Phase three
 - download and store relevant data separately (throw away data that you don't need)
 - filter garbage to special collections
 
+## Dependencies
+
+async, chai, database-cleaner, franc, geolib, ml-sentiment, mocha, mongodb, mongodb-fixtures, mongojs, pg, promise, sentiment, turf-center, turf-inside, twit, twitter, tz-lookup, wait-for
+
+dotenv, moment, v8-profiler
+
 ## Installation
 
   npm install twitter-smart-geo-stream --save
