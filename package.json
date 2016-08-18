@@ -1,8 +1,8 @@
 {
   "name": "twitter-smart-geo-stream",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "...",
-  "main": "./lib/twitterSMG.js",
+  "main": "./twitterSGS.js",
   "scripts": {
     "test": "mocha --reporter spec --recursive"
   },
@@ -13,7 +13,10 @@
   "keywords": [
     "Twitter",
     "geospatial",
-    "stream"
+    "stream",
+    "filtering",
+    "validation",
+    "verification"
   ],
   "author": "DavidK <dkocich@gmail.com> (https://github.com/dkocich)",
   "license": "SEE LICENSE IN LICENSE-MIT",
@@ -30,27 +33,46 @@
   "devDependencies": {
     "async": "^2.0.0-rc.4",
     "chai": "^3.5.0",
-    "database-cleaner": "^0.13.0",
+    "database-cleaner": "^1.1.0",
     "franc": "^2.0.0",
-    "mocha": "^2.4.5",
+    "geolib": "^2.0.21",
+    "mocha": "^3.0.2",
     "mongodb": "^2.1.18",
     "mongodb-fixtures": "0.0.5",
     "mongojs": "^2.4.0",
-    "pg": "^4.5.5",
+    "pg": "^6.1.0",
     "promise": "^7.1.1",
-    "sentiment": "^1.0.6",
+    "ml-sentiment": "^2.0.6",
+    "sentiment": "^2.0.0",
+    "moment": "^2.14.1",
+    "turf-center": "^3.0.12",
     "turf-inside": "^3.0.12",
     "twit": "^2.2.4",
-    "twitter": "^1.2.5",
+    "tz-lookup": "^6.0.2",
+    "v8-profiler": "^5.6.5",
     "wait-for": "^2.1.1"
   },
   "dependencies": {
+    "async": "^2.0.0-rc.4",
+    "chai": "^3.5.0",
+    "database-cleaner": "^1.1.0",
     "dotenv": "^2.0.0",
+    "franc": "^2.0.0",
     "geolib": "^2.0.21",
+    "mocha": "^3.0.2",
+    "mongodb": "^2.1.18",
+    "mongodb-fixtures": "0.0.5",
+    "mongojs": "^2.4.0",
+    "pg": "^6.1.0",
+    "promise": "^7.1.1",
     "ml-sentiment": "^2.0.6",
+    "sentiment": "^2.0.0",
     "moment": "^2.14.1",
     "turf-center": "^3.0.12",
+    "turf-inside": "^3.0.12",
+    "twit": "^2.2.4",
     "tz-lookup": "^6.0.2",
-    "v8-profiler": "^5.6.5"
+    "v8-profiler": "^5.6.5",
+    "wait-for": "^2.1.1"
   }
 }

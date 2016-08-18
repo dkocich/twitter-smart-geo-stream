@@ -75,7 +75,7 @@ var profilerRunning = false;
  * @param parameters.timeout_ms 60 * 1000
  * @param parameters.verbose default 'debug'
  */
-var twitterSMGstart = function (parameters) {
+var twitterSGSstart = function (parameters) {
     var p = parameters;
     var connStringMongo, connStringPg;
 
