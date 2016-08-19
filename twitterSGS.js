@@ -10,20 +10,15 @@ var s = require('sentiment');
 
 var async = require("async"),
     DatabaseCleaner = require('database-cleaner'),
-    MongoClient = require('mongodb').MongoClient,
     format = require('util').format,
-    Twit = require('twit');
-
-var franc = require('franc'),
+    franc = require('franc'),
+    geolib = require('geolib'),
+    MongoClient = require('mongodb').MongoClient,
+    ml = require('ml-sentiment')({lang: 'de'}),
     sentiment = require('sentiment'),
-    ml = require('ml-sentiment')({lang: 'de'});
-
-// lonlat to TZ
-var tz = require('tz-lookup');
-var turf = require('turf-center');
-
-var geolib = require('geolib');
-
+    turf = require('turf-center'),
+    Twit = require('twit'),
+    tz = require('tz-lookup');
 
 // Package version
 const VERSION = require('./package.json').version;
@@ -32,8 +27,8 @@ console.log(VERSION);
 const text = require('./data/texts.js').messages;
 
 const tweetSources = require('./data/tweetSources.js').tweetSources;
+const cities15000 = require('./geonames/cities15000.js').cities15000;
 // ----- console.log(tweetSources.length); // 1151
-
 
 const profiler = require('v8-profiler');
 const fs = require('fs');
@@ -89,6 +84,9 @@ var twitterSGSstart = function (parameters) {
 
     var sampleSizeCounter = 0;
     var acceptedSources = [];
+
+    const mediumKeyFilter = ['id_str', 'created_at', 'coordinates', 'place', 'entities'];
+    const smallKeyFilter = ['id_str', 'created_at', 'coordinates'];
 
     var calcStreamStats = function (rawTweets) {
 
@@ -163,6 +161,11 @@ var twitterSGSstart = function (parameters) {
             if (p.verbose == undefined) p.verbose = 'debug';
             if (p.calcStats == undefined) p.calcStats = false;
 
+            if (p.inclRetweets == undefined) p.inclRetweets = true;
+
+            if (p.buildUserNetwork == undefined) p.buildTopicNetwork = true;
+            if (p.buildTopicNetwork == undefined) p.buildTopicNetwork = true;
+
             if (p.checkSource == undefined) p.checkSource = false;
 
             if (p.sourceType == undefined) p.sourceType = false;
@@ -174,6 +177,7 @@ var twitterSGSstart = function (parameters) {
             if (p.calcPlaceCenter == undefined) p.calcPlaceCenter = false;
             if (p.calcPlaceCenterL == undefined) p.calcPlaceCenterL = 'all';
 
+            if (p.checkByLocation == undefined) p.checkByLocation = true;
 
             if (p.calcLocalTime == undefined) p.calcLocalTime = false;
 
@@ -218,24 +222,35 @@ var twitterSGSstart = function (parameters) {
         this.cleanDb = function (callback) {
 
             // clean only on debug to prevent from loosing data
-            if (p.verbose == 'debug') {
+            if (p.verbose == 'production') {
 
-                var databaseCleaner = new DatabaseCleaner('mongodb');
-                var connect = require('mongodb').connect;
+                if (p.useMongoDB) {
 
-                // var connStringMongo = 'mongodb://localhost/' + p.dbMongo;
-                // console.log('...cleanDb() ===      ', connStringMongo);
+                    var databaseCleaner = new DatabaseCleaner('mongodb');
+                    var connect = require('mongodb').connect;
 
-                connect(connStringMongo, function (err, db, p) {
+                    // var connStringMongo = 'mongodb://localhost/' + p.dbMongo;
+                    // console.log('...cleanDb() ===      ', connStringMongo);
 
-                    // delete all collections in DB
-                    databaseCleaner.clean(db, function () {
-                        console.log('...cleanDb() ===       cleaning done');
-                        db.close();
-                        callback(); // clear and end in debug
+                    connect(connStringMongo, function (err, db, p) {
+
+                        // delete all collections in DB
+                        databaseCleaner.clean(db, function () {
+                            console.log('...cleanDb() ===       cleaning done');
+                            db.close();
+                            callback(); // clear and end in debug
+                        });
+
                     });
 
-                });
+                } else {
+                    callback();
+                }
+
+
+                if (p.usePg === true) {
+                    // TODO CLEAN POSTGRES DB+TABLES
+                }
 
                 // end directly in production
             } else {
@@ -250,52 +265,58 @@ var twitterSGSstart = function (parameters) {
          */
         this.initDb = function (callback) {
 
-            // only when we want to use MongoDB
-            if (p.useMongoDB) {
+            if (p.verbose == 'production') {
 
-                //connect to db
-                MongoClient.connect(connStringMongo, function (err, db) {
+                // only when we want to use MongoDB
+                if (p.useMongoDB) {
 
-                    // end on error connecting?
-                    if (err) throw err;
+                    //connect to db
+                    MongoClient.connect(connStringMongo, function (err, db) {
 
-                    console.log('...initDb() ===        connected to ', p.dbMongo);
-
-                    // create collections with timestamp
-                    db.createCollection('unknown', function (err, collection) {
+                        // end on error connecting?
                         if (err) throw err;
-                    });
-                    db.createCollection('spambots', function (err, collection) {
-                        if (err) throw err;
-                    });
-                    db.createCollection('sample', function (err, collection) {
-                        if (err) throw err;
-                    });
-                    var date = new Date();
-                    console.log(date);
 
-                    db.createCollection('data' + date.getFullYear() + ('0' + (date.getMonth() + 1 )).slice(-2) + date.getUTCDate(), function (err, collection) {
-                        if (err) throw err;
-                    });
-                    console.log('... initDb() ===        created collections - errors, spambots, sample' + p.sampleSize);
+                        console.log('...initDb() ===        connected to ', p.dbMongo);
 
+                        // create collections with timestamp
+                        db.createCollection('unknown', function (err, collection) {
+                            if (err) throw err;
+                        });
+                        db.createCollection('spambots', function (err, collection) {
+                            if (err) throw err;
+                        });
+                        db.createCollection('sample', function (err, collection) {
+                            if (err) throw err;
+                        });
+                        var date = new Date();
+                        console.log(date);
+
+                        db.createCollection('data' + date.getFullYear() + ('0' + (date.getMonth() + 1 )).slice(-2) + date.getUTCDate(), function (err, collection) {
+                            if (err) throw err;
+                        });
+                        console.log('... initDb() ===        created collections - errors, spambots, sample' + p.sampleSize);
+
+                        callback();
+                    });
+
+                    // end directly when we dont use MongoDB
+                } else {
                     callback();
-                });
+                }
 
-                // end directly when we dont use MongoDB
+                // // TODO only when we want to use PostgreSQL
+                // if (p.usePostgresql) {
+                //     //connect to db
+                //         callback();
+                //
+                //     // end directly when we dont use MongoDB
+                // } else {
+                //     callback();
+                // }
+
             } else {
                 callback();
             }
-
-            // // TODO only when we want to use PostgreSQL
-            // if (p.usePostgresql) {
-            //     //connect to db
-            //         callback();
-            //
-            //     // end directly when we dont use MongoDB
-            // } else {
-            //     callback();
-            // }
 
         },
 
@@ -317,21 +338,6 @@ var twitterSGSstart = function (parameters) {
                 access_token_secret: p.access_token_secret,
                 timeout_ms: p.timeout_ms  // optional HTTP request timeout to apply to all requests.
             });
-
-            // {
-            //     "config": {
-            //     "consumer_key": "aaa",
-            //         "consumer_secret": "bbb",
-            //         "access_token": "ccc",
-            //         "access_token_secret": "ddd",
-            //         "timeout_ms": 60000
-            // },
-            //     "_twitter_time_minus_local_time_ms": 0
-            // }
-
-            // console.log(p.consumer_key, p.consumer_secret, p.access_token, p.access_token_secret);
-            // console.log(T.consumer_key, T.consumer_secret, T.access_token, T.access_token_secret);
-            // console.log(T.config.consumer_key, T.config.consumer_secret, T.config.access_token, T.config.access_token_secret);
 
             /**
              * calculates all kinds of other parameters
@@ -375,7 +381,7 @@ var twitterSGSstart = function (parameters) {
                     // console.log(dateNow, tweet.lang, tweet.user.lang, tweet.text);
                     // 2016-07-29T22:51:03.563Z
                     // console.log('cas s moment je ... ', moment(tweet.created_at, 'YYYY-MM-DDTHH:mm:ss', 'en'));
-                    var m = new Date(Date.parse(tweet.created_at.replace(/( \+)/, ' UTC$1')));
+                    tweet.date = new Date(Date.parse(tweet.created_at.replace(/( \+)/, ' UTC$1')));
                     // var tweetDate = 'Mon Dec 02 23:45:49 +0000 2013';
                     // var m = Date.parse(tweetDate);
                     if (p.verbose == 'debug') {
@@ -386,7 +392,7 @@ var twitterSGSstart = function (parameters) {
                 /**
                  * detect language
                  */
-                if (p.checkLanguage == true) {
+                if (p.checkLanguage) {
                     if (p.verbose === 'debug') console.log('checkLanguage is set to ... ', p.checkLanguage);
 
                     var francRes = franc(tweet.text);
@@ -400,7 +406,7 @@ var twitterSGSstart = function (parameters) {
                 /**
                  * calculate text sentiment value
                  */
-                if (p.calcSentiment == true) {
+                if (p.calcSentiment) {
                     if (p.verbose === 'debug') console.log('calcSentiment is set to ... ', p.calcSentiment);
 
                     if (tweet.lang === 'en' /*&& francRes === 'eng'*/) {
@@ -432,18 +438,19 @@ var twitterSGSstart = function (parameters) {
                     if (tweet.lang === 'de' /*&& francRes === 'deu'*/) {
                         var sentResDe = ml.classify(tweet.text);
                         tweet.sentR = sentResDe;
-                        console.log('NEMECKY JAZYK ´=======================', sentResDe);
-                        console.log(p.calcSentiment, tweet.lang, tweet.text);
+                        if (p.verbose === 'debug') {
+                            console.log('NEMECKY JAZYK ´=======================', sentResDe);
+                            console.log(p.calcSentiment, tweet.lang, tweet.text);
+                        }
                     }
-
                 }
 
+                if (p.calcPlaceCenter) {
 
-                if (p.calcPlaceCenter == true) {
                     if (p.calcPlaceCenterL == 'all') {
 
-                        if (tweet.place != undefined) {
-
+                        if (tweet.place !== null && tweet.place_type !== 'POI') {
+                            // get values from tweet BBOX array
                             var center = geolib.getCenter([
                                 {
                                     latitude: tweet.place.bounding_box.coordinates["0"]["0"]["0"],
@@ -455,26 +462,113 @@ var twitterSGSstart = function (parameters) {
                                 }
                             ]);
 
-                            var distance = geolib.getDistance(
-                                {
-                                    latitude: 51.5103,
-                                    longitude: 7.49347
-                                },
-                                {
-                                    latitude: "51° 31' N",
-                                    longitude: "7° 28' E"
-                                }
-                            );
+                            if (p.verbose === 'debug') console.log('center is', center); // { latitude: '-62.977546', longitude: '-147.366400' }
+                            tweet.pCenter = center;
 
-                            // tweet.place.bounding_box =
-                            console.log('center is', center); // { latitude: '-62.977546', longitude: '-147.366400' }
-                            console.log('distance is ', distance);
+                        }
+                        // if (tweet.coordinates != null) {
+                        //     if (tweet.coordinates.coordinates != null) {
+                        //         console.log(tweet.coordinates.coordinates);
+                        //     }
+                        // }
 
-                            tweet.pCenter = [{}];
-                            tweet.pDist = distance;
+                        if (tweet.coordinates !== null) {
+                            if (typeof tweet.coordinates.coordinates === 'object') {
+                                if (p.verbose === 'debug') console.log(tweet.coordinates.coordinates);
+                                var distance = geolib.getDistance(
+                                    {
+                                        latitude: center.latitude, // 51.5103,
+                                        longitude: center.longitude // 7.49347
+                                    },
+                                    {
+                                        latitude: tweet.coordinates.coordinates[0],
+                                        longitude: tweet.coordinates.coordinates[1]
+                                    }
+                                );
+
+                                if (p.verbose === 'debug') console.log('distance is ', distance);
+                                tweet.pDistance = distance;
+                            }
+                        }
+
+                    }
+                }
+
+                if (p.checkByLocation) {
+                    if (tweet.coordinates !== null && tweet.place !== null) {
+
+                        console.log(
+                            tweet.place.bounding_box.coordinates["0"]["0"]["0"],
+                            tweet.place.bounding_box.coordinates["0"]["0"]["1"],
+                            tweet.place.bounding_box.coordinates["0"]["2"]["0"],
+                            tweet.place.bounding_box.coordinates["0"]["2"]["1"]
+                        );
+
+                        console.log(tweet.coordinates.coordinates[0], tweet.coordinates.coordinates[1])
+
+                        // -69.238144   9.514141   -69.173592   9.584418
+                        // -69.194047   9.55847
+
+                        // 29.080789 40.405603 29.189454 40.482914
+                        // 29.1695263 40.4364484
+
+                        if (tweet.coordinates.coordinates[0] > tweet.place.bounding_box.coordinates["0"]["0"]["0"]
+                            &&
+                            tweet.coordinates.coordinates[0] < tweet.place.bounding_box.coordinates["0"]["2"]["0"]) {
+
+                            if (tweet.coordinates.coordinates[1] > tweet.place.bounding_box.coordinates["0"]["0"]["1"]
+                                &&
+                                tweet.coordinates.coordinates[1] < tweet.place.bounding_box.coordinates["0"]["2"]["1"]) {
+
+                                console.log('BOD JE UVNITR');
+                                tweet.pInside = true;
+                            }
                         }
                     }
                 }
+
+                if (p.inclRetweets === false) {
+                    if (tweet.retweeted) {
+                        console.log(tweet.retweeted);
+                        return;
+                    }
+                }
+
+                // if (p.buildUserNetwork) {
+                //     if (tweet.entities.user_mentions !== undefined) {
+                //         var from = tweet.user.id_str;
+                //         var to = tweet.entities.user_mentions[0].id_str;
+                //         // TODO DEJ DO DB
+                //     }
+                // }
+                //
+                // if (p.buildTopicNetwork) {
+                //     if (tweet.entities.hashtags !== undefined) {
+                //         var from = tweet.user.id_str;
+                //         var to = tweet.entities.hashtags[0].text;
+                //         // TODO DEJ DO DB
+                //     }
+                // }
+
+                if (p.geoparse) {
+                    //
+                    // // TODO
+                    // // geonames a searchindex
+                    // // https://github.com/olivernn/lunr.js
+                    //
+                    // console.log(tweet.text);
+                    // var res = tweet.text.split(" ");
+                    // // console.log(res);
+                    // // var a = tweet.sentR.tokens;
+                    //
+                    // res.forEach(function (token) {
+                    //     if (token.match(/[A-Z]*$/) ) {
+                    //         console.log('VELKE PISMENOOOO', token);
+                    //     }
+                    // })
+
+                }
+
 
                 /**
                  * TODO calculate local time from coordinates
@@ -482,22 +576,18 @@ var twitterSGSstart = function (parameters) {
                 if (p.calcLocalTime == true) {
 
                     // only if there are no coordinates and only "tweet.place" geolocolation type
-                    if (tweet.coordinates == undefined) {
-
-                        if (tweet.place != undefined) {
-
-                            // var countryCode = place.country_code; // US, EN, DE, etc.
-                            console.log ( tz(tweet.pCenter.lat, tweet.pCenter.lon) );
-                        }
-
-                        // spocitej ze souradnic casovou zonu
-                    } else {
-                        var lon = tweet.coordinate.coordinate[1];
-                        var lat = tweet.coordinate.coordinate[0];
-
+                    if (tweet.coordinates !== null) {
+                        var lat = tweet.coordinates.coordinates[0];
+                        var lon = tweet.coordinates.coordinates[1];
                         // Determine the timezone of the White House
-                        console.log(tz(lat, lon));
+                        tweet.tz = tz(tweet.pCenter.latitude, tweet.pCenter.longitude);
+                        // spocitej ze souradnic casovou zonu
+                    } else if (tweet.place !== null) {
+                        // var countryCode = place.country_code; // US, EN, DE, etc.
+                        tweet.tz = tz(tweet.pCenter.latitude, tweet.pCenter.longitude);
                     }
+                    if (p.debug == 'debug') console.log(tweet.tz);
+                    // var a = new Date().toLocaleString("en-US", {timeZone: tweet.tz });
                     // tweet.localT = resLocalT;
                 }
 
@@ -514,6 +604,39 @@ var twitterSGSstart = function (parameters) {
                 // if (p.calcTz = true) {
                 //
                 // };
+
+
+                if (p.tweetSaveSize !== 'full') {
+                    // full - medium - small
+                    var saveTweet = new Object();
+
+                    if (p.tweetSaveSize !== 'full') {
+                        // full - medium - small
+                        var saveTweet = new Object();
+
+                        if (p.tweetSaveSize === 'medium') {
+
+                            saveTweet.id_str = tweet.id_str;
+                            saveTweet.user.id_str = tweet.user.id_str;
+                            saveTweet.created_at = tweet.created_at;
+                            saveTweet.coordinates = tweet.coordinates;
+                            saveTweet.lang = tweet.lang;
+                            saveTweet.text = tweet.text;
+                            saveTweet.entities = tweet.entities;
+
+                            return saveTweet;
+
+                        } else if (p.tweetSaveSize === 'small') {
+
+                            saveTweet.id_str = tweet.id_str;
+                            saveTweet.user.id_str = tweet.user.id_str;
+                            saveTweet.created_at = tweet.created_at;
+                            saveTweet.coordinates = tweet.coordinates;
+
+                            return saveTweet;
+                        }
+                    }
+                }
 
                 return tweet;
             };
@@ -687,99 +810,6 @@ var twitterSGSstart = function (parameters) {
         }
     ]);
 };
-
-// var flog = function (a) {
-//     return console.log(a);
-// };
-
 module.exports = {
-    twitterSMGstart: twitterSMGstart
+    twitterSGGstart: twitterSGSstart
 };
-
-
-//var twitterSMG = require('twitter-smart-geo-stream');
-//var sanFrancisco = [ '-122.75', '36.8', '-121.75', '37.8' ];
-
-
-/*var smgDruhy = new twitterSMG({
- locations: ['-10.0', '20.0', '10.0', '40.0'],
- sampleSize: 250,
- calcStats: true,
- useMongoDB: true,
- hostMongo: 'localhost',
- portMongo: '27017',
- dbMongo: 'mojeDatabaze',
- calcSentiment: false,
- filterSpam: false,
- filterByLocation: false,
- consumer_key: 'h5EUsV1oaCF3Zqi7vwK3Il07v',
- consumer_secret: 'KEvWeD9ZWk1LO8pjtBMblYCfvF1E4keZ4y6Uap15MsJe50hYAQ',
- access_token: '2832363724-FLoz3awEnhL9xFa1gApfbgFxaVjCc2FheIrlReG',
- access_token_secret: 'iqmAyOKWYTu6J5LwDnp2oLpruxaVENwm1TddFUDG9Reh1',
- timeout_ms: 60 * 1000,  // optional HTTP request timeout to apply to all requests.
- verbose: 'debug'
- });*/
-
-// spawn first instance to San Francisco
-//smgPrvni.start();
-
-// spawn second instance to Germany
-//smgDruhy.start();
-
-
-/**
- * Adds commas to a number
- * @param {number} number
- * @param {string} locale
- * @return {string}
- */
-// module.exports = function(number, locale) {
-//     return number.toLocaleString(locale);
-// };
-
-/**
- * Escape
- */
-//
-// module.exports = {
-//   initiate: function ( params ) {
-//     return ; //Object(params)
-//   },
-//   connect: function ( host, db, collection) {
-//     return ; //Object(connection)
-//   },
-//   createDb: function() {
-//     var finished = true;
-//     return ; // Boolean(finished)
-//   },
-//   sample: function( connParams, amount ) {
-//     return ; // Object(sampleTweets)
-//   },
-//   analyze: function( connParams, amount ) {
-//     return ; // Object(histograms)
-//   }
-// };
-
-// escape: function(html) {
-//   return String(html)
-//     .replace(/&/g, '&amp;')
-//     .replace(/"/g, '&quot;')
-//     .replace(/'/g, '&#39;')
-//     .replace(/</g, '&lt;')
-//     .replace(/>/g, '&gt;');
-// },
-//
-// /**
-//  * Unescape special characters in the given string of html.
-//  *
-//  * @param  {String} html
-//  * @return {String}
-//  */
-// unescape: function(html) {
-//   return String(html)
-//     .replace(/&amp;/g, '&')
-//     .replace(/&quot;/g, '"')
-//     .replace(/&#39;/g, ''')
-//     .replace(/&lt;/g, '<')
-//     .replace(/&gt;/g, '>');
-// }
