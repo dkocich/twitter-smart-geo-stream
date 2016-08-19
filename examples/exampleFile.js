@@ -5,7 +5,7 @@ var TSGS = require('../twitterSGS.js');
 
 // I AM USING ENV FOR ACCESS KEYS - TYPE YOUR OWN
 // https://github.com/motdotla/dotenv
-require('dotenv').config();
+// require('dotenv').config();
 
 var parameters = {
     // Twitter backend
