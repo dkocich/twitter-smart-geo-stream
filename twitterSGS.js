@@ -604,37 +604,31 @@ var twitterSGSstart = function (parameters) {
                 // if (p.calcTz = true) {
                 //
                 // };
-
-
+                
                 if (p.tweetSaveSize !== 'full') {
                     // full - medium - small
-                    var saveTweet = new Object();
+                    var saveTweet = {};
 
-                    if (p.tweetSaveSize !== 'full') {
-                        // full - medium - small
-                        var saveTweet = new Object();
+                    if (p.tweetSaveSize === 'medium') {
 
-                        if (p.tweetSaveSize === 'medium') {
+                        saveTweet.id_str = tweet.id_str;
+                        saveTweet.user.id_str = tweet.user.id_str;
+                        saveTweet.created_at = tweet.created_at;
+                        saveTweet.coordinates = tweet.coordinates;
+                        saveTweet.lang = tweet.lang;
+                        saveTweet.text = tweet.text;
+                        saveTweet.entities = tweet.entities;
 
-                            saveTweet.id_str = tweet.id_str;
-                            saveTweet.user.id_str = tweet.user.id_str;
-                            saveTweet.created_at = tweet.created_at;
-                            saveTweet.coordinates = tweet.coordinates;
-                            saveTweet.lang = tweet.lang;
-                            saveTweet.text = tweet.text;
-                            saveTweet.entities = tweet.entities;
+                        return saveTweet;
 
-                            return saveTweet;
+                    } else if (p.tweetSaveSize === 'small') {
 
-                        } else if (p.tweetSaveSize === 'small') {
+                        saveTweet.id_str = tweet.id_str;
+                        saveTweet.user.id_str = tweet.user.id_str;
+                        saveTweet.created_at = tweet.created_at;
+                        saveTweet.coordinates = tweet.coordinates;
 
-                            saveTweet.id_str = tweet.id_str;
-                            saveTweet.user.id_str = tweet.user.id_str;
-                            saveTweet.created_at = tweet.created_at;
-                            saveTweet.coordinates = tweet.coordinates;
-
-                            return saveTweet;
-                        }
+                        return saveTweet;
                     }
                 }
 
@@ -668,13 +662,27 @@ var twitterSGSstart = function (parameters) {
                 }
 
             };
-            //
-            // var saveToDb = function (tweet) {
-            //
-            // };
+            /**
+             *
+             * @param tweet Object - one incoming tweet to be saved
+             */
+            var saveToDb = function (tweet) {
+                MongoClient.connect(connStringMongo, function (err, db) {
+                    if (err) throw err;
+                    db.collection('sample', function (error, collection) {
+                        var sampleCollection = collection;
+                        sampleCollection.insertOne(tweet);
+                        console.log("Insert: " + tweet.id_str);
+                    });
+
+                });
+
+            };
 
             //TODO UDELEJ VZOREK
-
+            /*
+             ===================== DEBUG STREAMING ONLY
+             */
             if (p.verbose == 'debug') {
 
                 console.log('THIS IS DEBUG MODE');
@@ -697,14 +705,14 @@ var twitterSGSstart = function (parameters) {
                     }
 
                     processTweet(tweet);
-
-                    // saveToDb(tweet);
-
-                    //TODO ULOZ VZOREK DO DB
+                    saveToDb(tweet);
                 });
 
             }
 
+            /*
+             ===================== PRODUCTION STREAMING ONLY
+             */
             if (p.verbose == 'production') {
                 // TODO
                 openDb('THIS IS PRODUCTION MODE');
@@ -779,7 +787,8 @@ var twitterSGSstart = function (parameters) {
                     processTweet(tweet);
                     rawTweets.push(tweet);
                     // save tweet
-                    // saveToDb(tweet);
+
+                    saveToDb(tweet);
 
                     sampleSizeCounter++;
                     // stop if there is enought tweets
@@ -810,6 +819,7 @@ var twitterSGSstart = function (parameters) {
         }
     ]);
 };
+// EXPORT MODULE'S FUNCTION
 module.exports = {
     twitterSGGstart: twitterSGSstart
 };
