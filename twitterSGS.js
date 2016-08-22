@@ -118,7 +118,7 @@ var twitterSGSstart = function (parameters) {
          *
          */
         this.start = function (callback) {
-            console.log('... DEBUGLOG start() === spusteno');
+            console.log('TTTTT XXXX ... DEBUGLOG start() === spusteno');
             /*async.series([
              function(){ ... },
              function(){ ... }
@@ -407,7 +407,7 @@ var twitterSGSstart = function (parameters) {
                  * calculate text sentiment value
                  */
                 if (p.calcSentiment) {
-                    if (p.verbose === 'debug') console.log('calcSentiment is set to ... ', p.calcSentiment);
+                    if (p.verbose === 'debug') csaveToDbonsole.log('calcSentiment is set to ... ', p.calcSentiment);
 
                     if (tweet.lang === 'en' /*&& francRes === 'eng'*/) {
                         var sentResEn = sentiment(tweet.text);
@@ -668,10 +668,19 @@ var twitterSGSstart = function (parameters) {
                 }
 
             };
-            //
-            // var saveToDb = function (tweet) {
-            //
-            // };
+            
+            var saveToDb = function (tweet) {
+						MongoClient.connect(connStringMongo, function (err, db) {
+                        if (err) throw err;
+						db.collection('sample', function (error, collection) {
+                            var sampleCollection = collection;
+							sampleCollection.insertOne(tweet);	
+							console.log("Insert: " + tweet.id_str);
+                        })
+                        
+                    });
+				
+            };
 
             //TODO UDELEJ VZOREK
 
@@ -697,9 +706,7 @@ var twitterSGSstart = function (parameters) {
                     }
 
                     processTweet(tweet);
-
-                    // saveToDb(tweet);
-
+					
                     //TODO ULOZ VZOREK DO DB
                 });
 
@@ -780,6 +787,8 @@ var twitterSGSstart = function (parameters) {
                     rawTweets.push(tweet);
                     // save tweet
                     // saveToDb(tweet);
+					console.log("PIIIIInsert: " + tweet.id_str);
+                    saveToDb(tweet);
 
                     sampleSizeCounter++;
                     // stop if there is enought tweets
