@@ -6,11 +6,10 @@
 var moment = require('moment');
 require('mongodb');
 var s = require('sentiment');
-//require('cld');
 
+//require('cld');
 var async = require("async"),
     DatabaseCleaner = require('database-cleaner'),
-    format = require('util').format,
     franc = require('franc'),
     geolib = require('geolib'),
     MongoClient = require('mongodb').MongoClient,
@@ -20,37 +19,20 @@ var async = require("async"),
     Twit = require('twit'),
     tz = require('tz-lookup');
 
+const fs = require('fs');
+const profiler = require('v8-profiler');
+
+
+var databaseCleaner = new DatabaseCleaner('mongodb');
+var connect = require('mongodb').connect;
+
 // Package version
 const VERSION = require('./package.json').version;
 console.log(VERSION);
 
-const text = require('./data/texts.js').messages;
-
 const tweetSources = require('./data/tweetSources.js').tweetSources;
 const cities15000 = require('./geonames/cities15000.js').cities15000;
 // ----- console.log(tweetSources.length); // 1151
-
-const profiler = require('v8-profiler');
-const fs = require('fs');
-var profilerRunning = false;
-
-// https://strongloop.com/strongblog/tips-optimizing-slow-code-in-nodejs/
-// function toggleProfiling() {
-//     if (profilerRunning) {
-//         const profile = profiler.stopProfiling();
-//         console.log('stopped profiling');
-//         profile.export()
-//             .pipe(fs.createWriteStream('./myapp-' + Date.now() + '.cpuprofile'))
-//             .once('error', profiler.deleteAllProfiles)
-//             .once('finish', profiler.deleteAllProfiles);
-//         profilerRunning = false;
-//         return
-//     }
-//     profiler.startProfiling();
-//     profilerRunning = true;
-//     console.log('started profiling');
-// }
-// process.on('SIGUSR2', toggleProfiling);
 
 /**
  * @param parameters.locations LONLAT bounding box (see Twitter documentation - example is ['-180.00', '-90.0', '180.00', '90.0'])
@@ -74,38 +56,22 @@ var twitterSGSstart = function (parameters) {
     var p = parameters;
     var connStringMongo, connStringPg;
 
-    var rNumTotal,
-        rNumIn,
-        rNumOut,
-        rNumPassed,
-        rNumLang,
-        rNumMove,
-        rNumFilteredSource = 0;
+    var aliveMongoConn;
 
-    var sampleSizeCounter = 0;
+    var rNTweetsIn = 0,
+        rNTweetsSaved = 0,
+        rNLimitIn = 0,
+        rNumPassed = 0,
+        rNumLang = 0,
+        rNumMove = 0,
+        rNumFilteredSource = 0,
+        sampleSizeCounter = 0;
+
+    // rNTotal,
+    // rNIn,
+    // rNOut,
+
     var acceptedSources = [];
-
-    const mediumKeyFilter = ['id_str', 'created_at', 'coordinates', 'place', 'entities'];
-    const smallKeyFilter = ['id_str', 'created_at', 'coordinates'];
-
-    var calcStreamStats = function (rawTweets) {
-
-        console.log('pocitanim aktualni statistiku ', rawTweets.length);
-
-        console.log(' Total # of tweets received ', sampleSizeCounter + '\n',
-            ' Total # of tweets filtered out ', rNumFilteredSource + '\n',
-            ' Total # of tweets passed ', rNumPassed + '\n',
-            ' Total # of tweets wrong language ', rNumLang + '\n',
-            ' Total # of tweets coordinates moving around world ', rNumMove + '\n');
-
-        var users = {};
-        for (var i = 0; i < rawTweets.length; i++) {
-            users[rawTweets[i].user.id_str] = 1 + (users[rawTweets[i].user.id_str] || 0);
-        }
-
-        console.log(' Total users ', users.length);
-
-    };
 
     /**
      * ASYNC SERIES OF PROCESSES
@@ -139,73 +105,65 @@ var twitterSGSstart = function (parameters) {
          */
         this.testLog = function (callback) {
 
+            if (p.verbose == undefined) p.verbose = 'production';
+
             // log all parameters
             if (p.verbose === 'debug') {
                 console.log('... DEBUGLOG ===== STARTING WITH THESE PARAMS ===== ');
                 console.log(p);
             }
 
-            // detect missing access keys and finish
-            if (p.consumer_key == undefined ||
-                p.consumer_secret == undefined ||
-                p.access_token == undefined ||
-                p.access_token_secret == undefined) {
-                throw new error('MISSING ACCESS KEYS');
-            }
-
             // set default values for non-set parameters
-            if (p.track == undefined) p.track = undefined;
+            if (p.track == undefined) p.track = '';
             if (p.locations == undefined) p.locations = ['-180.0 , -90.0 , 180.0 , 90.0'];
-            if (p.sampleSize == undefined) p.sampleSize = 100;
-            if (p.timeout_ms == undefined) p.timeout_ms = 60 * 1000;
-            if (p.verbose == undefined) p.verbose = 'debug';
-            if (p.calcStats == undefined) p.calcStats = false;
 
+            if (p.sampleSize == undefined) p.sampleSize = 100;
+            if (p.calcStats == undefined) p.calcStats = false;
+            if (p.verbose == undefined) p.verbose = 'debug';
+
+            /* Twitter access and Twit module settings
+             * GRAB YOUR KEYS AT https://apps.twitter.com/
+             */
+            // detect missing access keys and finish
+            if (p.consumer_key == undefined || p.consumer_secret == undefined ||
+                p.access_token == undefined || p.access_token_secret == undefined) {
+                throw new Error('MISSING ACCESS KEYS');
+            }
+            if (p.timeout_ms == undefined) p.timeout_ms = 60 * 1000;
+
+
+            /*
+             * STORAGE CONNECTION
+             */
+            // MongoDB
+            if (p.useMongoDB == undefined) p.useMongoDB = false;
+            if (p.hostMongo == undefined) p.hostMongo = 'localhost';
+            if (p.portMongo == undefined) p.portMongo = '27017';
+            if (p.dbMongo == undefined) p.dbMongo = 'twittersgs';
+            // PostgreSQL
+            if (p.usePg == undefined) p.usePg = false;
+            if (p.hostPg == undefined) p.hostPg = 'localhost';
+            if (p.portPg == undefined) p.portPg = '5432';
+            if (p.dbPg == undefined) p.dbPg = 'twittersgs';
+
+            // init connection string to MongoDB + PostgreSQL
+            connStringMongo = 'mongodb://' + p.hostMongo + ':' + p.portMongo + '/' + p.dbMongo;
+            connStringPg = 'postgresql://' + p.hostPg + ':' + p.portPg + '/' + p.dbPg;
+
+            // mongodb://localhost:27017/twittersgs
+            // postgresql://localhost:5432/twittersgs
+            if (p.verbose == 'debug') console.log(connStringMongo + '\n' + connStringPg);
+
+            /*
+             *  FILTER
+             */
             if (p.inclRetweets == undefined) p.inclRetweets = true;
 
             if (p.checkContent == undefined) p.checkCountent = false;
             if (p.contentWord == undefined) p.contentWord = false;
 
-            if (p.buildUserNetwork == undefined) p.buildTopicNetwork = false;
-            if (p.buildTopicNetwork == undefined) p.buildTopicNetwork = false;
-            if (p.buildUsersDb == undefined) p.buildUsersDb = false;
 
             if (p.checkSource == undefined) p.checkSource = false;
-
-            if (p.sourceType == undefined) p.sourceType = false;
-
-            if (p.checkLanguage == undefined) p.checkLanguage = false;
-            if (p.calcSentiment == undefined) p.calcSentiment = false;
-            if (p.castDateString == undefined) p.castDateString = false;
-
-            if (p.calcPlaceCenter == undefined) p.calcPlaceCenter = false;
-            if (p.calcPlaceCenterL == undefined) p.calcPlaceCenterL = 'all';
-
-            if (p.checkByLocation == undefined) p.checkByLocation = true;
-
-            if (p.calcLocalTime == undefined) p.calcLocalTime = false;
-
-            if (p.filterSpam == undefined) p.filterSpam = false;
-            if (p.filterByLocation == undefined) p.filterByLocation = false;
-
-            //db
-            if (p.useMongoDB == undefined) p.useMongoDB = false;
-            if (p.hostMongo == undefined) p.hostMongo = 'localhost';
-            if (p.portMongo == undefined) p.portMongo = '27017';
-            if (p.dbMongo == undefined) p.dbMongo = 'twittersmg';
-
-            if (p.usePg == undefined) p.usePg = false;
-            if (p.hostPg == undefined) p.hostPg = 'localhost';
-            if (p.portPg == undefined) p.portPg = '5432';
-            if (p.dbPg == undefined) p.dbPg = 'twittersmg';
-
-            // init connection string to MongoDB
-            connStringMongo = 'mongodb://' + p.hostMongo + ':' + p.portMongo + '/' + p.dbMongo;
-            console.log(connStringMongo + '\n' + connStringPg);
-
-            // TODO init connection string to PostgreSQL
-            // pgConnString = 'postgresql://' + p.hostPg  + ':' + p.portPg + '/' + p.dbPg ;
-
             // set filtering of tweets source applications
             if (p.checkSource) {
                 for (var i = 0; i < tweetSources.length; i++) {
@@ -214,6 +172,41 @@ var twitterSGSstart = function (parameters) {
                     }
                 }
             }
+            if (p.sourceType == undefined) p.sourceType = 'all';
+            // category of source classification
+            // for details see './data/tweetSource.csv' - 'all' 'human' 'web device'
+            // 'mobile devices' 'meteo' 'earthquakes' 'trends' 'traffic'
+
+            if (p.checkSpam == undefined) p.checkSpam = false;
+            if (p.checkByLocation == undefined) p.checkByLocation = false;
+
+            /*
+             *  IMPROVE and REPAIR
+             */
+            if (p.calcPlaceCenter == undefined) p.calcPlaceCenter = false;
+            if (p.calcPlaceCenterL == undefined) p.calcPlaceCenterL = 'all';
+
+            if (p.castDateString == undefined) p.castDateString = false;
+            if (p.calcLocalTime == undefined) p.calcLocalTime = false;
+
+            if (p.checkLanguage == undefined) p.checkLanguage = false;
+            if (p.calcSentiment == undefined) p.calcSentiment = false;
+
+            /*
+             *  OPTIMIZE
+             */
+            if (p.geoparse == undefined) p.geoparse = false;
+            if (p.tweetSaveSize == undefined) p.tweetSaveSize = 'full';
+            if (p.delUserMd == undefined) p.delUserMd = false;
+            if (p.delPlaceMd == undefined) p.delPlaceMd = false;
+
+            /*
+             * CREATE DERIVED DATASETS
+             */
+            if (p.buildUserNetwork == undefined) p.buildTopicNetwork = false;
+            if (p.buildTopicNetwork == undefined) p.buildTopicNetwork = false;
+            if (p.buildUserDb == undefined) p.buildUserDb = false;
+            if (p.buildPlaceDb == undefined) p.buildPlaceDb = false;
 
             callback();
         },
@@ -226,40 +219,31 @@ var twitterSGSstart = function (parameters) {
         this.cleanDb = function (callback) {
 
             // clean only on debug to prevent from loosing data
-            if (p.verbose == 'production') {
+
+            if (p.useMongoDB || p.usePg) {
 
                 if (p.useMongoDB) {
-
-                    var databaseCleaner = new DatabaseCleaner('mongodb');
-                    var connect = require('mongodb').connect;
-
-                    // var connStringMongo = 'mongodb://localhost/' + p.dbMongo;
-                    // console.log('...cleanDb() ===      ', connStringMongo);
-
-                    connect(connStringMongo, function (err, db, p) {
-
+                    if (p.verbose == 'debug') {
+                        console.log('...cleanDb() ===      ', connStringMongo);
+                        console.log('...cleanDb() ===       cleaning and closing DB connection');
+                    }
+                    connect(connStringMongo, function (err, db) {
                         // delete all collections in DB
                         databaseCleaner.clean(db, function () {
-                            console.log('...cleanDb() ===       cleaning done');
                             db.close();
                             callback(); // clear and end in debug
                         });
-
                     });
-
-                } else {
-                    callback();
                 }
 
-
-                if (p.usePg === true) {
-                    // TODO CLEAN POSTGRES DB+TABLES
+                if (p.usePg) {
+                    // TODO CLEAN POSTGRES DB+TABLES IF EXIST
                 }
-
-                // end directly in production
+                // end if no database is selected directly in production
             } else {
                 callback();
             }
+
         },
 
         /**
@@ -269,58 +253,75 @@ var twitterSGSstart = function (parameters) {
          */
         this.initDb = function (callback) {
 
-            if (p.verbose == 'production') {
+            // only when we want to use MongoDB
+            if (p.useMongoDB) {
 
-                // only when we want to use MongoDB
-                if (p.useMongoDB) {
+                //connect to db
+                MongoClient.connect(connStringMongo, {poolSize: 10, ssl: false}, function (err, db) {
 
-                    //connect to db
-                    MongoClient.connect(connStringMongo, function (err, db) {
+                    aliveMongoConn = db;
 
-                        // end on error connecting?
+                    // end on error connecting?
+                    if (err) throw err;
+
+                    var date = new Date();
+                    // var nameStr = date.getFullYear() + ('0' + (date.getMonth() + 1 )).slice(-2) + date.getUTCDate();
+                    console.log('...initDb() ===        connected to ', p.dbMongo);
+
+                    // create collections with timestamp
+                    db.createCollection('unclassified', {autoIndexId: false}, function (err, collection) {
                         if (err) throw err;
-
-                        console.log('...initDb() ===        connected to ', p.dbMongo);
-
-                        // create collections with timestamp
-                        db.createCollection('unknown', function (err, collection) {
-                            if (err) throw err;
-                        });
-                        db.createCollection('spambots', function (err, collection) {
-                            if (err) throw err;
-                        });
-                        db.createCollection('sample', function (err, collection) {
-                            if (err) throw err;
-                        });
-                        var date = new Date();
-                        console.log(date);
-
-                        db.createCollection('data' + date.getFullYear() + ('0' + (date.getMonth() + 1 )).slice(-2) + date.getUTCDate(), function (err, collection) {
-                            if (err) throw err;
-                        });
-                        console.log('... initDb() ===        created collections - errors, spambots, sample' + p.sampleSize);
-
-                        callback();
+                    });
+                    db.createCollection('spambots', {autoIndexId: false}, function (err, collection) {
+                        if (err) throw err;
+                    });
+                    db.createCollection('sampleResult' /*+ nameStr*/, {autoIndexId: false}, function (err, collection) {
+                        if (err) throw err;
+                    });
+                    db.createCollection('data' /*+ nameStr*/, {autoIndexId: false}, function (err, collection) {
+                        if (err) throw err;
+                    });
+                    db.createCollection('limit' /*+ nameStr*/, {autoIndexId: false}, function (err, collection) {
+                        if (err) throw err;
                     });
 
-                    // end directly when we dont use MongoDB
-                } else {
+                    // TODO MONGODB CREATE INDEX on id_str ... user.id_str ... date ... jeste neco ???
+                    // INTELLISHELL EXAMPLE
+                    //
+                    // db.sample.createIndex({
+                    //     "id_str": 1 , {unique: true}
+                    // });
+                    //
+                    // db.sample.createIndex({
+                    //     "date": 1
+                    // });
+                    //
+                    // db.sample.createIndex({
+                    //     "id_str": 1 , "date" {unique: true}
+                    // });
+
+                    if (p.verbose == 'debug') {
+                        console.log(date);
+                        console.log('... initDb() ===        created collections in mongodb' + p.sampleSize);
+                    }
                     callback();
-                }
+                });
 
-                // // TODO only when we want to use PostgreSQL
-                // if (p.usePostgresql) {
-                //     //connect to db
-                //         callback();
-                //
-                //     // end directly when we dont use MongoDB
-                // } else {
-                //     callback();
-                // }
-
+                // end directly when we dont use MongoDB
             } else {
                 callback();
             }
+
+            // // TODO only when we want to use PostgreSQL
+            // if (p.usePostgresql) {
+            //     //connect to db
+            //         callback();
+            //
+            //     // end directly when we dont use MongoDB
+            // } else {
+            //     callback();
+            // }
+
 
         },
 
@@ -332,8 +333,6 @@ var twitterSGSstart = function (parameters) {
         this.sampleOrStream = function (callback) {
             console.log('... sample() ===        sampling/streaming begins');
 
-
-            //TODO PRIPOJ TWITTER
             // init Twitter connection keys
             var T = new Twit({
                 consumer_key: p.consumer_key,
@@ -345,7 +344,10 @@ var twitterSGSstart = function (parameters) {
 
             /**
              * calculates all kinds of other parameters
-             * @param tweet Object One incoming tweet
+             * @param tweet Object - One incoming tweet
+             * @return processedTweet Object - updated/repaired tweet
+             * OR
+             * @return false Boolean - if tweet is filtered
              */
             var processTweet = function (tweet) {
                 // http://stackoverflow.com/questions/6549223/javascript-code-to-display-twitter-created-at-as-xxxx-ago
@@ -400,9 +402,11 @@ var twitterSGSstart = function (parameters) {
                 if (p.checkLanguage) {
                     if (p.verbose === 'debug') console.log('checkLanguage is set to ... ', p.checkLanguage);
 
-                    var francRes = franc(tweet.text);
+                    // var francRes = franc(tweet.text);
                     // console.log(francRes); // 'eng', 'nld', 'und' ...
-                    tweet.francR = francRes;
+
+                    tweet.francR = franc(tweet.text);
+                    ;
 
                     // if (tweet.francR == 'deu') console.log('franc je DE', tweet.text);
                     // if (tweet.francR == 'cze') console.log('franc je CZE', tweet.text);
@@ -415,8 +419,8 @@ var twitterSGSstart = function (parameters) {
                     if (p.verbose === 'debug') console.log('calcSentiment is set to ... ', p.calcSentiment);
 
                     if (tweet.lang === 'en' /*&& francRes === 'eng'*/) {
-                        var sentResEn = sentiment(tweet.text);
-                        tweet.sentR = sentResEn;
+                        // var sentResEn = sentiment(tweet.text);
+                        tweet.sentR = sentiment(tweet.text);
 
                         /*
                          en en FUCK I ACCIDNETSLLY SCROLLED ALL THE WAY UP I HATE SAFARI
@@ -511,15 +515,15 @@ var twitterSGSstart = function (parameters) {
                 if (p.checkByLocation) {
                     if (tweet.coordinates !== null && tweet.place !== null) {
 
-                        // if (p.verbose === 'debug') {
-                        console.log(
-                            tweet.place.bounding_box.coordinates["0"]["0"]["0"],
-                            tweet.place.bounding_box.coordinates["0"]["0"]["1"],
-                            tweet.place.bounding_box.coordinates["0"]["2"]["0"],
-                            tweet.place.bounding_box.coordinates["0"]["2"]["1"]
-                        );
-                        console.log(tweet.coordinates.coordinates[0], tweet.coordinates.coordinates[1])
-                        // }
+                        if (p.verbose === 'debug') {
+                            console.log(
+                                tweet.place.bounding_box.coordinates["0"]["0"]["0"],
+                                tweet.place.bounding_box.coordinates["0"]["0"]["1"],
+                                tweet.place.bounding_box.coordinates["0"]["2"]["0"],
+                                tweet.place.bounding_box.coordinates["0"]["2"]["1"]
+                            );
+                            console.log(tweet.coordinates.coordinates[0], tweet.coordinates.coordinates[1]);
+                        }
 
                         // FOR VERIFICATION OF CORRECT ORDER - 2 examples
 
@@ -569,6 +573,14 @@ var twitterSGSstart = function (parameters) {
                 //     }
                 // }
 
+                if (p.buildUserDb) {
+                    // TODO put user data to separate collection and update it (f.e. 1 hour each day?)
+                }
+
+                if (p.buildPlaceDb) {
+                    // TODO put place metadata to separate collection
+                }
+
                 // look for place names in tweet text
                 if (p.geoparse) {
                     //
@@ -599,8 +611,26 @@ var twitterSGSstart = function (parameters) {
                     if (tweet.coordinates !== null) {
                         var lat = tweet.coordinates.coordinates[0];
                         var lon = tweet.coordinates.coordinates[1];
+
                         // Determine the timezone of the White House
-                        tweet.tz = tz(tweet.pCenter.latitude, tweet.pCenter.longitude);
+
+                        try {
+                            tweet.tz = tz(lat, lon);
+                        } catch (e) {
+                            // if (e instanceof TypeError) {
+                            //     // ignore TypeError
+                            // }
+                            // else
+                            if (e instanceof RangeError) {
+                                console.log(e);
+                                console.log('lat is: ', lat, 'lon is', lon);
+                                // handle RangeError
+                            }
+                            // else {
+                            //     // something else
+                            // }
+                        }
+
                         // spocitej ze souradnic casovou zonu
                     } else if (tweet.place !== null) {
                         // var countryCode = place.country_code; // US, EN, DE, etc.
@@ -655,74 +685,100 @@ var twitterSGSstart = function (parameters) {
                 return tweet;
             };
 
-            // TODO
-            var openDb = function (accessLevel) {
-                // TODO otevrit databazi
+            // TODO rozhodnout se co s timto
+            // open database only ONCE and then JUST INSERT data
+            // var openDb = function (accessLevel) {
+            //     
+            //
+            //     if (accessLevel === 'sample') {
+            //         var dataCollection;
+            //
+            //         MongoClient.connect(connStringMongo, function (err, db) {
+            //             if (err) throw err;
+            //
+            //             db.collection('sample', function (error, collection) {
+            //                 dataCollection = collection;
+            //                 return dataCollection;
+            //             })
+            //
+            //         });
+            //     } else if (accessLevel === 'stream') {
+            //
+            //         MongoClient.connect(connStringMongo, function (err, db) {
+            //             if (err) throw err;
+            //
+            //             db.collection('data', function (error, collection) {
+            //                 dataCollection = collection;
+            //                 return dataCollection;
+            //             })
+            //
+            //         });
+            //     }
+            //
+            // };
 
-                if (accessLevel === 'sample') {
 
-                    MongoClient.connect(connStringMongo, function (err, db) {
-                        if (err) throw err;
-
-                        db.collection('sample', function (error, collection) {
-                            var sampleCollection = collection;
-                        })
-
-                    });
-                } else if (accessLevel === 'stream') {
-
-                    MongoClient.connect(connStringMongo, function (err, db) {
-                        if (err) throw err;
-
-                        db.collection('production', function (error, collection) {
-                            var sampleCollection = collection;
-                        })
-
-                    });
-                }
-
-            };
             /**
              *
              * @param tweet Object - one incoming tweet to be saved
              */
             var saveToDb = function (tweet) {
                 if (tweet != null) {
-                    MongoClient.connect(connStringMongo, function (err, db) {
-                        if (err) throw err;
-                        db.collection('sample', function (error, collection) {
-                            var sampleCollection = collection;
-                            sampleCollection.insertOne(tweet);
-                            console.log("Insert: " + tweet.id_str);
-                        });
-
+                    // using opened connection
+                    aliveMongoConn.collection('data', function (error, collection) {
+                        collection.insertOne(tweet);
+                        rNTweetsSaved++;
+                        // if (p.verbose == 'debug') {
+                        console.log("Insert: " + tweet.id_str);
+                        // }
                     });
                 }
             };
 
-            //TODO UDELEJ VZOREK
+            var calcStreamStats = function (rawTweets) {
+                var rNTweetsFiltered = rNTweetsIn - rNTweetsSaved;
+                console.log('pocitanim aktualni statistiku rawTweets ', rawTweets.length);
+
+                console.log(
+                    ' rNLimitIn             = # of limit msg. received  ', rNLimitIn + '\n',
+                    ' rNTweetsIn            = # of tw. received         ', rNTweetsIn + '\n',
+                    ' rNTweetsSaved         = # of tw. saved to DB      ', rNTweetsSaved + '\n',
+                    ' rNTweetsFiltered      = # of tw. thrown away      ', rNTweetsFiltered + '\n',
+                    ' sampleSizeCounter     = # of tw. received         ', sampleSizeCounter + '\n',
+                    ' rNumFilteredSource    = # of tw. filt. by Source  ', rNumFilteredSource + '\n',
+                    ' # of tweets passed                                ', rNumPassed + '\n',
+                    ' # of tweets wrong language                        ', rNumLang + '\n',
+                    ' # of tweets coordinates moving around world       ', rNumMove + '\n'
+                );
+
+                var users = {};
+                for (var i = 0; i < rawTweets.length; i++) {
+                    users[rawTweets[i].user.id_str] = 1 + (users[rawTweets[i].user.id_str] || 0);
+                }
+
+                console.log(' Total users ', users.length);
+
+            };
+
             /*
              ===================== DEBUG STREAMING ONLY
              */
             if (p.verbose == 'debug') {
-
                 console.log('THIS IS DEBUG MODE');
 
-                var stream = T.stream('statuses/sample');
+                // var dataCollection = openDb('sample');
 
                 //
                 // stream a sample of public statuses
                 //
-
-                // TODO
-                openDb('sample');
+                var stream = T.stream('statuses/sample');
 
                 stream.on('tweet', function (tweet) {
                     var date = new Date().toISOString();
                     console.log(date, tweet.lang, tweet.user.lang, tweet.text);
                     sampleSizeCounter++;
 
-                    if (sampleSizeCounter = p.sampleSize) {
+                    if (sampleSizeCounter === p.sampleSize) {
                         stream.stop();
                         callback();
                     }
@@ -731,17 +787,17 @@ var twitterSGSstart = function (parameters) {
                     saveToDb(tweet);
                 });
 
-            }
+            } else
 
             /*
              ===================== PRODUCTION STREAMING ONLY
              */
             if (p.verbose == 'production') {
-                // TODO
-                openDb('THIS IS PRODUCTION MODE');
+                // var dataCollection = openDb('production');
 
                 var stream = T.stream('statuses/filter', {
                     track: p.track,
+                    /*lang: 'en',*/
                     locations: p.locations
                 });
 
@@ -756,9 +812,16 @@ var twitterSGSstart = function (parameters) {
                     throw error;
                 });
                 stream.on('limit', function (limitMessage) {
+                    rNLimitIn++;
                     var date = new Date().toISOString();
                     //console.log(date + ' .....LOG EVENT LIMIT ' + limitMessage);
-                    return console.log(date + ' .....LOG EVENT LIMIT ' + JSON.stringify(limitMessage));
+                    if (p.verbose == 'debug') {
+                        return console.log(date + ' .....LOG EVENT LIMIT ' + JSON.stringify(limitMessage));
+                    } else {
+                        aliveMongoConn.collection('limit', function (error, collection) {
+                            collection.insertOne(limitMessage);
+                        });
+                    }
                 });
                 stream.on('warning', function (warning) {
                     var date = new Date().toISOString();
@@ -794,7 +857,7 @@ var twitterSGSstart = function (parameters) {
                  * MAIN PART AND LOGIC IS HERE
                  */
                 stream.on('tweet', function (tweet) {
-                    // rNumTotal++;
+                    rNTweetsIn++;
                     console.log(sampleSizeCounter);
                     /**
                      * tweet - input
@@ -802,6 +865,7 @@ var twitterSGSstart = function (parameters) {
                      */
                     var processedTweet = processTweet(tweet);
 
+                    // KEEP DATA TO CALCULATE SOMETHING LATER
                     rawTweets.push(tweet);
 
                     // pouze pokud se vrati tweet a ne "false" ktery znaci odfiltrovani zpravy, tak ulozim
@@ -830,9 +894,10 @@ var twitterSGSstart = function (parameters) {
             console.log('... calcStats() ===     pocitam statistiky z databaze');
             //console.log('... total / rNumIn / rNumOut', rNumTotal, rNumIn, rNumOut);
             callback();
-
+            
+            // TODO NEJAKE STATISTIKY Z DATABAZE NAPR V 15 MINUTOVYCH OKNECH A VYSLEDKY ZPRACOVAT A DATA VIC PROFILTROVAT
+            
             //TODO NAJDI AUTORY S VIC NEZ 1 TWEETEM A ZJISTI ODCHYLKY V POLOZE -
-            //TODO
             //TODO NAJDI SPAMY POMOCI DETEKCE JAZYKA - MENSI NEZ X PRISLUSNOST
             //TODO FUZZY HLEDANI SPAMERU PODLE PROFILU - CIM VIC TWEETU, DATUM ZALOZENI
         }
