@@ -7,65 +7,93 @@ var TSGS = require('../twitterSGS.js');
 // https://github.com/motdotla/dotenv
 // require('dotenv').config();
 
+// consumer_key: process.env.EnvVarConsumerKey,
+// consumer_secret: process.env.EnvVarConsumerSecret,
+// access_token: process.env.EnvVarAcessToken,
+// access_token_secret: process.env.EnvVarAcessTokenSecret,
+
+// console.log(process.env.EnvVarAcessToken);
+
+
 var parameters = {
-    // Twitter backend
-    track: 'apple',
-    locations: ['-180.0','-90.0','180.0','90.0'] , // var world = ; ['-125.75', '20.8', '-101.75', '50.8']
+    /*  GENERAL
+     *  keywords - for details see https://dev.twitter.com/streaming/overview/request-parameters#track
+     *  some place or world = [ '-180.0','-90.0','180.0','90.0'];
+     *  var SanFrancisco = ['-125.75', '20.8', '-101.75', '50.8'];
+     */
+    track:              'apple',
+    locations:          ['-180.0', '-90.0', '180.0', '90.0'],
 
-    // Access and Twit module settings
-    
-    // consumer_key: process.env.EnvVarConsumerKey,//'ieEKT1apDrIcnjlt8wR4yOqFf', // pouzivane 'h5EUsV1oaCF3Zqi7vwK3Il07v',
-    // consumer_secret: process.env.EnvVarConsumerSecret, // 'ADIObvcQvp8x01jaMFX4iD5oCW9VB5noY9NW6jS558BMhY6n0t', // pouzivane 'KEvWeD9ZWk1LO8pjtBMblYCfvF1E4keZ4y6Uap15MsJe50hYAQ',
-    // access_token: process.env.EnvVarAcessToken, // '120722111-AXtwB0S08MjOJbYJ19sQHxMbLqaFihARLAr0V7hg', // pouzivanne '2832363724-FLoz3awEnhL9xFa1gApfbgFxaVjCc2FheIrlReG',
-    // access_token_secret: process.env.EnvVarAcessTokenSecret, //'atThRDUy5ARU6VgvuO8a7YsqkKWhF1T4MmuH1WYh28QYK', // pouzivane 'iqmAyOKWYTu6J5LwDnp2oLpruxaVENwm1TddFUDG9Reh1',
+    sampleSize:         5,              // any number OR 0 as infinity
+    calcStats:          true,           // true - false
+    verbose:            'production',    //'production' 'debug'
 
-    consumer_key: 'ieEKT1apDrIcnjlt8wR4yOqFf', // pouzivane 'h5EUsV1oaCF3Zqi7vwK3Il07v',
-    consumer_secret: 'ADIObvcQvp8x01jaMFX4iD5oCW9VB5noY9NW6jS558BMhY6n0t', // pouzivane 'KEvWeD9ZWk1LO8pjtBMblYCfvF1E4keZ4y6Uap15MsJe50hYAQ',
-    access_token: '120722111-AXtwB0S08MjOJbYJ19sQHxMbLqaFihARLAr0V7hg', // pouzivanne '2832363724-FLoz3awEnhL9xFa1gApfbgFxaVjCc2FheIrlReG',
-    access_token_secret: 'atThRDUy5ARU6VgvuO8a7YsqkKWhF1T4MmuH1WYh28QYK', // pouzivane 'iqmAyOKWYTu6J5LwDnp2oLpruxaVENwm1TddFUDG9Reh1',
+    /* Twitter access and Twit module settings
+     * GRAB YOUR KEYS AT https://apps.twitter.com/
+     */
+    consumer_key:       'ieEKT1apDrIcnjlt8wR4yOqFf',
+    consumer_secret:    'ADIObvcQvp8x01jaMFX4iD5oCW9VB5noY9NW6jS558BMhY6n0t',
+    access_token:       '120722111-AXtwB0S08MjOJbYJ19sQHxMbLqaFihARLAr0V7hg',
+    access_token_secret:'atThRDUy5ARU6VgvuO8a7YsqkKWhF1T4MmuH1WYh28QYK',
+    // optional HTTP request timeout to apply to all requests.
+    timeout_ms:         10 * 1000,      // optional HTTP request timeout to apply to all requests.
 
-    timeout_ms: 10 * 1000,  // optional HTTP request timeout to apply to all requests.
-
-    sampleSize:5,
-
+    /*
+     * STORAGE CONNECTION
+     */
     // MongoDB
-    useMongoDB: false,
-    hostMongo: 'localhost',
-    portMongo: '27017',
-    dbMongo: 'twittersgs',
-
+    useMongoDB:         false,          // change or use detault
+    hostMongo:          'localhost',    // change or use detault
+    portMongo:          '27017',        // change or use detault
+    dbMongo:            'twittersgs',   // change or use detault
     // PostgreSQL
-    usePg: false,
-    hostPg: 'localhost',
-    portPg: '5432',
-    dbPg: 'twittersgs',
+    usePg:              false,          // change or use detault
+    hostPg:             'localhost',    // change or use detault
+    portPg:             '5432',         // change or use detault
+    dbPg:               'twittersgs',   // change or use detault
 
-    inclRetweets: true, 
-    
-    checkSource: true,
-    sourceType: 'human',
-    tweetSaveSize: 'full', // small / medium
-    calcStats: true,
-    
-    castDateString: true,
-    checkLanguage: true,
-    calcSentiment: true,
+    /*
+     *  FILTER
+     */
+    inclRetweets:       true,           // true - false
 
-    calcPlaceCenter: true,
-    calcPlaceCenterL: 'all', // 'country' 'city' 'neighbourhood' 'poi'
-    checkByLocation: true,
-    calcLocalTime: true,
-    
-    checkSpam: false,
-    
-    buildUserNetwork: true,
-    buildTopicNetwork: true,
-    
-    geoparse: true,
-    
-    verbose: 'production' //debug
+    checkContent:       false,          // true - false
+    contentWord:        false,          // true - false
+
+    checkByLocation:    false,           // true - false
+
+    checkSource:        true,           // true - false
+    sourceType:         'human',
+
+    checkSpam:          false,          // true - false
+
+    // category of source classification
+    // for details see './data/tweetSource.csv' - 'all' 'human' 'web device'
+    // 'mobile devices' 'meteo' 'earthquakes' 'trends' 'traffic'
+
+    /*
+     *  IMPROVE and REPAIR
+     */
+    calcPlaceCenter:    true,           // true - false
+    calcPlaceCenterL:   'all',          // 'all' 'country' 'city' 'neighbourhood' 'poi'
+
+    castDateString:     true,           // true - false
+    calcLocalTime:      true,           // true - false
+
+    checkLanguage:      true,           // true - false
+    calcSentiment:      true,           // true - false
+
+    /*
+     *  OPTIMIZE
+     */
+    geoparse:           true,
+    tweetSaveSize:      'full',         // 'full' 'medium' 'small'
+
+    /*
+     * CREATE DERIVED DATASETS
+     */
+    buildUserNetwork:   false,          // true - false
+    buildTopicNetwork:  false,          // true - false
+    buildUsersDb:       false           // true - false
 };
-
-console.log(process.env.EnvVarAcessToken);
-
 TSGS.twitterSGGstart(parameters);
