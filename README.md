@@ -27,6 +27,7 @@ Project offers to:
 
 For usage see examples/exampleFile.js ... Basically you have set something like this:
 
+```javascript
     var parameters = {
         /*  GENERAL
          *  keywords - for details see https://dev.twitter.com/streaming/overview/request-parameters#track
@@ -111,6 +112,7 @@ For usage see examples/exampleFile.js ... Basically you have set something like 
     };
 
     TSGS.twitterSGSstart(parameters);       // START WITH THIS COMMAND !!!
+```
 
 ## TODO - Tests
 
