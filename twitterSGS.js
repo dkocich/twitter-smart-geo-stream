@@ -118,7 +118,7 @@ var twitterSGSstart = function (parameters) {
          *
          */
         this.start = function (callback) {
-            console.log('TTTTT XXXX ... DEBUGLOG start() === spusteno');
+            console.log('... DEBUGLOG start() === spusteno');
             /*async.series([
              function(){ ... },
              function(){ ... }
@@ -787,7 +787,7 @@ var twitterSGSstart = function (parameters) {
                     rawTweets.push(tweet);
                     // save tweet
                     // saveToDb(tweet);
-					console.log("PIIIIInsert: " + tweet.id_str);
+					console.log("Insert to db: " + tweet.id_str);
                     saveToDb(tweet);
 
                     sampleSizeCounter++;
