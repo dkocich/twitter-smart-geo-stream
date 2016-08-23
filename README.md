@@ -25,49 +25,86 @@ Project offers to:
 
 ## Usage
 
-For usage see examples/examplePackage.js ... Basically you have to do something like this:
+For usage see examples/exampleFile.js ... Basically you have set something like this:
 
     var parameters = {
-        track: 'apple',                     // keywords - for details see https://dev.twitter.com/streaming/overview/request-parameters#track
-        locations:['-125','20','-101','50'], // some place or world = [ '-180.0','-90.0','180.0','90.0'];
-        consumer_key:       'aaa',          // Access and Twit module settings
-        consumer_secret:    'bbb',          // GRAB YOUR KEYS AT https://apps.twitter.com/
+        /*  GENERAL
+         *  keywords - for details see https://dev.twitter.com/streaming/overview/request-parameters#track
+         *  some place or world = [ '-180.0','-90.0','180.0','90.0'];
+         */
+        track:              'apple',
+        locations:          ['-125','20','-101','50'],
+        verbose:            'production',   // 'production' 'debug'
+
+        sampleSize:         5,              // any number OR 0 as infinity
+        calcStats:          true,           // true - false
+        verbose:            'production',   //'production' - 'debug'
+
+        /* Twitter access and Twit module settings
+         * GRAB YOUR KEYS AT https://apps.twitter.com/
+         */
+        consumer_key:       'aaa',
+        consumer_secret:    'bbb',
         access_token:       'ccc',
         access_token_secret:'ddd',
-        timeout_ms: 10 * 1000,              // optional HTTP request timeout to apply to all requests.
+        // optional HTTP request timeout to apply to all requests.
+        timeout_ms:         10 * 1000,
 
+        /*
+         * STORAGE CONNECTION
+         */
         // MongoDB
         useMongoDB:         false,          // change or use detault
         hostMongo:          'localhost',    // change or use detault
         portMongo:          '27017',        // change or use detault
         dbMongo:            'twittersgs',   // change or use detault
-
         // PostgreSQL
         usePg:              false,          // change or use detault
         hostPg:             'localhost',    // change or use detault
         portPg:             '5432',         // change or use detault
         dbPg:               'twittersgs',   // change or use detault
 
-        sampleSize:         5,              // any number OR 0 as infinity
-        calcStats:          true,           // true - false
+        /*
+         *  FILTER
+         */
+        inclRetweets:        true,          // true - false
 
-        inclRetweet:        true,           // true-false
-        castDateString:     true,           // true-false
+        checkContent:       false,          // true - false
+        contentWord:        false,          // true - false
+
+        checkSource:        true,           // true - false
+        sourceType:         'human',
+        // category of source classification
+        // for details see './data/tweetSource.csv' - 'all' 'human' 'web device'
+        // 'mobile devices' 'meteo' 'earthquakes' 'trends' 'traffic'
+
+        checkSpam:          false,          // true - false
+        checkByLocation:    false,          // true - false
+
+        /*
+         *  IMPROVE and REPAIR
+         */
+        calcPlaceCenter:    true,           // true - false
+        calcPlaceCenterL:   'all',          // 'all' 'country' 'city' 'neighbourhood' 'poi'
+
+        castDateString:     true,           // true - false
+        calcLocalTime:      true,           // true - false
+
         checkLanguage:      true,           // true - false
         calcSentiment:      true,           // true - false
 
-        calcPlaceCenter:    true,           // true - false
-        calcPlaceCenterL:   'all',          // 'all' - 'country' - 'city' - 'neighbourhood' - 'poi'
-        calcLocalTime:      true,           // true false
-
-        checkSource:        true,           // true - false
-        sourceType:         'human',        // category of source classification - for details see './data/tweetSource.csv' - 'all' 'human', “web device” 'mobile devices' 'meteo' 'earthquakes' 'trends' 'traffic'
-        checkSpam:          false,          // true - false
-        checkByLocation:    false,          // true - false
+        /*
+         *  OPTIMIZE
+         */
         geoparse:           false           // true - false
         tweetSaveSize:      'full',         // full - medium - small
 
-        verbose: 'production' //debug
+        /*
+         * CREATE DERIVED DATASETS
+         */
+        buildUserNetwork:   false,          // true - false
+        buildTopicNetwork:  false,          // true - false
+        buildUsersDb:       false,          // true - false
     };
 
     TSGS.twitterSGSstart(parameters);       // START WITH THIS COMMAND !!!
