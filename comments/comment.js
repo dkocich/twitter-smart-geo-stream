@@ -1,3 +1,39 @@
+// twitterSGS
+
+// PROFILER NA ZACATKU SKRIPTU
+
+// testing https://www.npmjs.com/package/v8-profiler
+// var profilerRunning = false;
+
+// NOT REQUIRED?
+// format = require('util').format,
+
+// TO BE REMOVED?
+// const text = require('./data/texts.js').messages;
+
+
+// https://strongloop.com/strongblog/tips-optimizing-slow-code-in-nodejs/
+// function toggleProfiling() {
+//     if (profilerRunning) {
+//         const profile = profiler.stopProfiling();
+//         console.log('stopped profiling');
+//         profile.export()
+//             .pipe(fs.createWriteStream('./myapp-' + Date.now() + '.cpuprofile'))
+//             .once('error', profiler.deleteAllProfiles)
+//             .once('finish', profiler.deleteAllProfiles);
+//         profilerRunning = false;
+//         return
+//     }
+//     profiler.startProfiling();
+//     profilerRunning = true;
+//     console.log('started profiling');
+// }
+// process.on('SIGUSR2', toggleProfiling);
+
+
+
+
+
 
 // EXAMPLEFILE
 

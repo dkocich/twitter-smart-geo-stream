@@ -10,7 +10,7 @@ parameters = {
     track:              'apple',
     locations:          ['-180.0', '-90.0', '180.0', '90.0'],
 
-    sampleSize:         100,              // any number OR 0 as infinity
+    sampleSize:         1000,              // any number OR 0 as infinity
     calcStats:          true,           // true - false
     verbose:            'production',    //'production' 'debug'
 
