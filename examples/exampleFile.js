@@ -1,21 +1,7 @@
 var TSGS = require('../twitterSGS.js');
-// var Twit = require('twit');
+var parameters;
 
-// require('dotenv').load();
-
-// I AM USING ENV FOR ACCESS KEYS - TYPE YOUR OWN
-// https://github.com/motdotla/dotenv
-// require('dotenv').config();
-
-// consumer_key: process.env.EnvVarConsumerKey,
-// consumer_secret: process.env.EnvVarConsumerSecret,
-// access_token: process.env.EnvVarAcessToken,
-// access_token_secret: process.env.EnvVarAcessTokenSecret,
-
-// console.log(process.env.EnvVarAcessToken);
-
-
-var parameters = {
+parameters = {
     /*  GENERAL
      *  keywords - for details see https://dev.twitter.com/streaming/overview/request-parameters#track
      *  some place or world = [ '-180.0','-90.0','180.0','90.0'];
