@@ -167,8 +167,10 @@ var twitterSGSstart = function (parameters) {
             if (p.buildTopicNetwork == undefined) p.buildTopicNetwork = true;
 
             if (p.checkSource == undefined) p.checkSource = false;
-
             if (p.sourceType == undefined) p.sourceType = false;
+			
+			if (p.checkContent == undefined) p.checkCountent = false;
+			if (p.contentWord == undefined) p.contentWord = false;
 
             if (p.checkLanguage == undefined) p.checkLanguage = false;
             if (p.calcSentiment == undefined) p.calcSentiment = false;
@@ -367,6 +369,24 @@ var twitterSGSstart = function (parameters) {
                         rNumFilteredSource++;
                         if (p.verbose == 'debug') {
                             console.log('... DEBUGLOG checkSource === not found - take another');
+                        }
+                        return;
+                    }
+                }
+				
+				if (p.checkContent) {
+                    var found = false;
+                    if (tweet.text.includes(p.contentWord)) {
+                        if (p.verbose == 'debug') {
+                            console.log('... DEBUGLOG checkContent === found - continue to analyze ' + tweet.text);
+                        }
+                        found = true;
+					}
+                    // dont continue when we dont want to track this source
+                    if (found == false) {
+                        rNumFilteredSource++;
+                        if (p.verbose == 'debug') {
+                            console.log('... DEBUGLOG checkContent === not found - take another: ' + tweet.text);
                         }
                         return;
                     }
@@ -670,6 +690,7 @@ var twitterSGSstart = function (parameters) {
             };
             
             var saveToDb = function (tweet) {
+				if (tweet != null) {
 						MongoClient.connect(connStringMongo, function (err, db) {
                         if (err) throw err;
 						db.collection('sample', function (error, collection) {
@@ -679,7 +700,7 @@ var twitterSGSstart = function (parameters) {
                         })
                         
                     });
-				
+				}
             };
 
             //TODO UDELEJ VZOREK
@@ -694,6 +715,11 @@ var twitterSGSstart = function (parameters) {
 
                 // TODO
                 openDb('sample');
+				
+				var stream = T.stream('statuses/filter', {
+                    // track: p.track,
+                    locations: p.locations
+                });
 
                 stream.on('tweet', function (tweet) {
                     var date = new Date().toISOString();
@@ -705,9 +731,9 @@ var twitterSGSstart = function (parameters) {
                         callback();
                     }
 
-                    processTweet(tweet);
+                    var processedtweet = processTweet(tweet);
+                    saveToDb(processedtweet);
 					
-                    //TODO ULOZ VZOREK DO DB
                 });
 
             }
@@ -783,12 +809,13 @@ var twitterSGSstart = function (parameters) {
                      * tweet - input
                      * tweet - output
                      */
-                    processTweet(tweet);
-                    rawTweets.push(tweet);
+                    var processedtweet = processTweet(tweet);
+                    rawTweets.push(tweet); //Pro pocitani statistik z originalu
                     // save tweet
                     // saveToDb(tweet);
-					console.log("Insert to db: " + tweet.id_str);
-                    saveToDb(tweet);
+					//console.log("Insert to db: " + tweet.id_str);
+					//TODO - toto není dopbré místo, uloží se i ty co byly vyfiltrovány
+                    saveToDb(processedtweet);
 
                     sampleSizeCounter++;
                     // stop if there is enought tweets
