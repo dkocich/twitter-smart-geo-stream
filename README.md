@@ -98,6 +98,8 @@ For usage see examples/exampleFile.js ... Basically you have set something like 
          */
         geoparse:           false           // true - false
         tweetSaveSize:      'full',         // full - medium - small
+        delUserMd:          false,          // true - false
+        delPlaceMd:         false,          // true - false
 
         /*
          * CREATE DERIVED DATASETS
@@ -105,6 +107,7 @@ For usage see examples/exampleFile.js ... Basically you have set something like 
         buildUserNetwork:   false,          // true - false
         buildTopicNetwork:  false,          // true - false
         buildUsersDb:       false,          // true - false
+        buildPlaceDb:       false           // true - false
     };
 
     TSGS.twitterSGSstart(parameters);       // START WITH THIS COMMAND !!!
