@@ -31,7 +31,7 @@ async.series([
             c++;
 
             if (c == 50) {
-                console.log('loggg', c);
+                console.log('loggg', c, date);
                 callback();
             }
         });
@@ -39,10 +39,10 @@ async.series([
 
     this.testStop = function (callback) {
         console.log('... DEBUGLOG konec === ukonceno');
+        callback();
     }
 
-])
-;
+]);
 
 console.log('budu drive nez cela serie');
 
