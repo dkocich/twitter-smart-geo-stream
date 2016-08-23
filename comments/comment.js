@@ -1,5 +1,20 @@
 
+// EXAMPLEFILE
 
+// var Twit = require('twit');
+
+// require('dotenv').load();
+
+// I AM USING ENV FOR ACCESS KEYS - TYPE YOUR OWN
+// https://github.com/motdotla/dotenv
+// require('dotenv').config();
+
+// consumer_key: process.env.EnvVarConsumerKey,
+// consumer_secret: process.env.EnvVarConsumerSecret,
+// access_token: process.env.EnvVarAcessToken,
+// access_token_secret: process.env.EnvVarAcessTokenSecret,
+
+// console.log(process.env.EnvVarAcessToken);
 
 
 
