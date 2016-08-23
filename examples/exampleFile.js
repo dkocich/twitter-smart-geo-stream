@@ -10,7 +10,7 @@ parameters = {
     track:              'apple',
     locations:          ['-180.0', '-90.0', '180.0', '90.0'],
 
-    sampleSize:         5,              // any number OR 0 as infinity
+    sampleSize:         100,              // any number OR 0 as infinity
     calcStats:          true,           // true - false
     verbose:            'production',    //'production' 'debug'
 
@@ -74,12 +74,15 @@ parameters = {
      */
     geoparse:           true,
     tweetSaveSize:      'full',         // 'full' 'medium' 'small'
-
+    delUserMd:          false,          // true - false
+    delPlaceMd:         false,          // true - false
+    
     /*
      * CREATE DERIVED DATASETS
      */
     buildUserNetwork:   false,          // true - false
     buildTopicNetwork:  false,          // true - false
-    buildUsersDb:       false           // true - false
+    buildUserDb:        false,          // true - false
+    buildPlaceDb:       false           // true - false
 };
 TSGS.twitterSGGstart(parameters);
