@@ -163,8 +163,12 @@ var twitterSGSstart = function (parameters) {
 
             if (p.inclRetweets == undefined) p.inclRetweets = true;
 
-            if (p.buildUserNetwork == undefined) p.buildTopicNetwork = true;
-            if (p.buildTopicNetwork == undefined) p.buildTopicNetwork = true;
+            if (p.checkContent == undefined) p.checkCountent = false;
+            if (p.contentWord == undefined) p.contentWord = false;
+
+            if (p.buildUserNetwork == undefined) p.buildTopicNetwork = false;
+            if (p.buildTopicNetwork == undefined) p.buildTopicNetwork = false;
+            if (p.buildUsersDb == undefined) p.buildUsersDb = false;
 
             if (p.checkSource == undefined) p.checkSource = false;
 
@@ -364,13 +368,14 @@ var twitterSGSstart = function (parameters) {
                     }
                     // dont continue when we dont want to track this source
                     if (found == false) {
-                        rNumFilteredSource++;
+                        rNumFilteredSource++; // one more filtered out
                         if (p.verbose == 'debug') {
                             console.log('... DEBUGLOG checkSource === not found - take another');
                         }
-                        return;
+                        return false;
                     }
                 }
+
 
                 /**
                  * recast string tweet.created_at to date
@@ -439,7 +444,7 @@ var twitterSGSstart = function (parameters) {
                         var sentResDe = ml.classify(tweet.text);
                         tweet.sentR = sentResDe;
                         if (p.verbose === 'debug') {
-                            console.log('NEMECKY JAZYK ´=======================', sentResDe);
+                            console.log('GERMAN LANGUAGE ´=======================', sentResDe);
                             console.log(p.calcSentiment, tweet.lang, tweet.text);
                         }
                     }
@@ -447,6 +452,10 @@ var twitterSGSstart = function (parameters) {
 
                 if (p.calcPlaceCenter) {
 
+                    /**
+                     * place containts bounding box of country / region / city / neighbourhood
+                     * and we want to save only point (for some of these types)
+                     */
                     if (p.calcPlaceCenterL == 'all') {
 
                         if (tweet.place !== null && tweet.place_type !== 'POI') {
@@ -494,17 +503,25 @@ var twitterSGSstart = function (parameters) {
                     }
                 }
 
+                /**
+                 * if we have both types of geolocation:
+                 * --- GPS COORDINATES (lat/lon)
+                 * --- PLACE LOCALIZATION WITH BOUNDING BOX
+                 */
                 if (p.checkByLocation) {
                     if (tweet.coordinates !== null && tweet.place !== null) {
 
+                        // if (p.verbose === 'debug') {
                         console.log(
                             tweet.place.bounding_box.coordinates["0"]["0"]["0"],
                             tweet.place.bounding_box.coordinates["0"]["0"]["1"],
                             tweet.place.bounding_box.coordinates["0"]["2"]["0"],
                             tweet.place.bounding_box.coordinates["0"]["2"]["1"]
                         );
-
                         console.log(tweet.coordinates.coordinates[0], tweet.coordinates.coordinates[1])
+                        // }
+
+                        // FOR VERIFICATION OF CORRECT ORDER - 2 examples
 
                         // -69.238144   9.514141   -69.173592   9.584418
                         // -69.194047   9.55847
@@ -520,7 +537,9 @@ var twitterSGSstart = function (parameters) {
                                 &&
                                 tweet.coordinates.coordinates[1] < tweet.place.bounding_box.coordinates["0"]["2"]["1"]) {
 
-                                console.log('BOD JE UVNITR');
+                                if (p.verbose === 'debug') {
+                                    console.log('BOD JE UVNITR');
+                                }
                                 tweet.pInside = true;
                             }
                         }
@@ -530,7 +549,7 @@ var twitterSGSstart = function (parameters) {
                 if (p.inclRetweets === false) {
                     if (tweet.retweeted) {
                         console.log(tweet.retweeted);
-                        return;
+                        return false;
                     }
                 }
 
@@ -550,6 +569,7 @@ var twitterSGSstart = function (parameters) {
                 //     }
                 // }
 
+                // look for place names in tweet text
                 if (p.geoparse) {
                     //
                     // // TODO
@@ -604,7 +624,7 @@ var twitterSGSstart = function (parameters) {
                 // if (p.calcTz = true) {
                 //
                 // };
-                
+
                 if (p.tweetSaveSize !== 'full') {
                     // full - medium - small
                     var saveTweet = {};
@@ -667,16 +687,17 @@ var twitterSGSstart = function (parameters) {
              * @param tweet Object - one incoming tweet to be saved
              */
             var saveToDb = function (tweet) {
-                MongoClient.connect(connStringMongo, function (err, db) {
-                    if (err) throw err;
-                    db.collection('sample', function (error, collection) {
-                        var sampleCollection = collection;
-                        sampleCollection.insertOne(tweet);
-                        console.log("Insert: " + tweet.id_str);
+                if (tweet != null) {
+                    MongoClient.connect(connStringMongo, function (err, db) {
+                        if (err) throw err;
+                        db.collection('sample', function (error, collection) {
+                            var sampleCollection = collection;
+                            sampleCollection.insertOne(tweet);
+                            console.log("Insert: " + tweet.id_str);
+                        });
+
                     });
-
-                });
-
+                }
             };
 
             //TODO UDELEJ VZOREK
@@ -686,6 +707,8 @@ var twitterSGSstart = function (parameters) {
             if (p.verbose == 'debug') {
 
                 console.log('THIS IS DEBUG MODE');
+
+                var stream = T.stream('statuses/sample');
 
                 //
                 // stream a sample of public statuses
@@ -717,17 +740,10 @@ var twitterSGSstart = function (parameters) {
                 // TODO
                 openDb('THIS IS PRODUCTION MODE');
 
-                //if (p.verbose == 'debug') {
-                //    var stream = T.stream('statuses/sample');
-                //} else if (p.verbose == 'production') {
-                //
-                //}
-                //
                 var stream = T.stream('statuses/filter', {
-                    // track: p.track,
+                    track: p.track,
                     locations: p.locations
                 });
-                // var stream = T.stream('statuses/sample');
 
                 var rawTweets = [];
 
@@ -784,11 +800,14 @@ var twitterSGSstart = function (parameters) {
                      * tweet - input
                      * tweet - output
                      */
-                    processTweet(tweet);
-                    rawTweets.push(tweet);
-                    // save tweet
+                    var processedTweet = processTweet(tweet);
 
-                    saveToDb(tweet);
+                    rawTweets.push(tweet);
+
+                    // pouze pokud se vrati tweet a ne "false" ktery znaci odfiltrovani zpravy, tak ulozim
+                    if (processedTweet != false) {
+                        saveToDb(processedTweet);
+                    }
 
                     sampleSizeCounter++;
                     // stop if there is enought tweets
