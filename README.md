@@ -1,6 +1,7 @@
 Twitter Smart Geospatial Stream
 =========
 
+[![Build Status](https://travis-ci.org/SummerWish/twitter-smart-geo-stream.svg?branch=master)](https://travis-ci.org/dkocich/twitter-smart-geo-stream)
 [![npm version](https://img.shields.io/npm/v/twitter-smart-geo-stream.svg)](https://www.npmjs.com/package/twitter-smart-geo-stream) [![npm download counter](https://img.shields.io/npm/dm/twitter-smart-geo-stream.svg)](https://www.npmjs.com/package/twitter-smart-geo-stream)
 
 [![Dependency Status](https://david-dm.org/dkocich/twitter-smart-geo-stream.svg)](https://david-dm.org/dkocich/twitter-smart-geo-stream) [![devDependency Status](https://david-dm.org/dkocich/twitter-smart-geo-stream/dev-status.svg)](https://david-dm.org/dkocich/twitter-smart-geo-stream#info=devDependencies)
