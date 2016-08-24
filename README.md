@@ -1,6 +1,12 @@
 Twitter Smart Geospatial Stream
 =========
 
+[![npm version](https://img.shields.io/npm/v/twitter-smart-geo-stream.svg)](https://www.npmjs.com/package/twitter-smart-geo-stream) [![npm download counter](https://img.shields.io/npm/dm/twitter-smart-geo-stream.svg)](https://www.npmjs.com/package/twitter-smart-geo-stream)
+
+[![Dependency Status](https://david-dm.org/dkocich/twitter-smart-geo-stream.svg)](https://david-dm.org/dkocich/twitter-smart-geo-stream) [![devDependency Status](https://david-dm.org/dkocich/twitter-smart-geo-stream/dev-status.svg)](https://david-dm.org/dkocich/twitter-smart-geo-stream#info=devDependencies)
+
+[![NodeICO](https://nodei.co/npm/twitter-smart-geo-stream.png?downloads=true&downloadRank=true&stars=true)](https://www.npmjs.com/package/twitter-smart-geo-stream)
+
 This project uses only stream of geospatial data coming from public Twitter stream.
 
 It is an outcome of my geospatial analysis of the available data and tries to utilize my personal experience to prevent others from time wasting processes with data harmonozation.
