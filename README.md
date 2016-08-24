@@ -5,7 +5,7 @@ Twitter Smart Geospatial Stream
 
 [![Dependency Status](https://david-dm.org/dkocich/twitter-smart-geo-stream.svg)](https://david-dm.org/dkocich/twitter-smart-geo-stream) [![devDependency Status](https://david-dm.org/dkocich/twitter-smart-geo-stream/dev-status.svg)](https://david-dm.org/dkocich/twitter-smart-geo-stream#info=devDependencies)
 
-[![NodeICO](https://nodei.co/npm/twitter-smart-geo-stream.png?downloads=true&downloadRank=true&stars=true)](https://www.npmjs.com/package/twitter-smart-geo-stream)
+[![NodeICO](https://nodei.co/npm/twitter-smart-geo-stream.png?downloads=true&downloadRank=true&stars=true)](https://www.npmjs.com/twitter-smart-geo-stream)
 
 This project uses only stream of geospatial data coming from public Twitter stream.
 
