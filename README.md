@@ -22,6 +22,12 @@ Project offers to:
 - create DB and collections on provided connection and store data
 - download and store only relevant data separately (filter or throw away data that you don't need)
 
+## Requirements
+Install (optional):
+ PostgreSQL     https://www.pipelinedb.com/download
+ MongoDB        https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/
+ Redis          http://redis.io/download
+
 ## Installation
   npm install twitter-smart-geo-stream
   npm install twitter-smart-geo-stream --save (as dependency for your own modules)
