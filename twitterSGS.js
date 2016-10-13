@@ -115,6 +115,7 @@ var twitterSGSstart = function (parameters) {
 
       // set default values for non-set parameters
       if (p.track == undefined) p.track = '';
+      if (p.lang == undefined) p.lang = '';
       if (p.locations == undefined) p.locations = ['-180.0 , -90.0 , 180.0 , 90.0'];
 
       if (p.sampleSize == undefined) p.sampleSize = 100;
@@ -135,6 +136,9 @@ var twitterSGSstart = function (parameters) {
       /*
        * STORAGE CONNECTION
        */
+      if (p.createNewDb == undefined) p.createNewDb = false;
+      if (p.indexMongo == undefined) p.indexMongo = false;
+      if (p.indexPg == undefined) p.indexPg = false;
       // MongoDB
       if (p.useMongoDB == undefined) p.useMongoDB = false;
       if (p.hostMongo == undefined) p.hostMongo = 'localhost';
@@ -227,13 +231,17 @@ var twitterSGSstart = function (parameters) {
             console.log('...cleanDb() ===      ', connStringMongo);
             console.log('...cleanDb() ===       cleaning and closing DB connection');
           }
-          connect(connStringMongo, function (err, db) {
-            // delete all collections in DB
-            databaseCleaner.clean(db, function () {
-              db.close();
-              callback(); // clear and end in debug
+          if (p.createNewDb) {
+            connect(connStringMongo, function (err, db) {
+              // delete all collections in DB
+              databaseCleaner.clean(db, function () {
+                db.close();
+                callback(); // clear and end in debug
+              });
             });
-          });
+          } else {
+            callback();
+          }
         }
 
         if (p.usePg) {
@@ -281,13 +289,31 @@ var twitterSGSstart = function (parameters) {
           db.createCollection('data' /*+ nameStr*/, {autoIndexId: false}, function (err, collection) {
             if (err) throw err;
           });
-          db.createCollection('limit' /*+ nameStr*/, {autoIndexId: false}, function (err, collection) {
+          db.createCollection('limitMsg' /*+ nameStr*/, {autoIndexId: false}, function (err, collection) {
             if (err) throw err;
           });
 
           // TODO MONGODB CREATE INDEX on id_str ... user.id_str ... date ... jeste neco ???
           // INTELLISHELL EXAMPLE
           //
+          db.collection('data').ensureIndex({"user.id_str": 1}, function (err, result) {
+            console.log('... log - index created on data / user.id_str');
+          });
+          db.collection('data').ensureIndex({"id_str": 1 } , {unique: true}, function (err, result) {
+            console.log('... log - index created on data / id_str');
+          });
+          db.collection('data').ensureIndex({"lang": 1}, function (err, result) {
+            console.log('... log - index created on data / lang');
+          });
+          db.collection('data').ensureIndex({"place.country_code": 1}, function (err, result) {
+            console.log('... log - index created on data / place.country_code');
+          });
+          db.collection('data').ensureIndex({"created_at": 1}, function (err, result) {
+            console.log('... log - index created on data / created_at');
+          });
+          db.collection('limitMsg').ensureIndex({"timestamp": 1}, function (err, result) {
+            console.log('... log - index created on limitMsg / timestamp_ms');
+          });
           // db.sample.createIndex({
           //     "id_str": 1 , {unique: true}
           // });
@@ -322,7 +348,6 @@ var twitterSGSstart = function (parameters) {
       //     callback();
       // }
 
-
     },
 
     /**
@@ -331,7 +356,7 @@ var twitterSGSstart = function (parameters) {
      *
      */
     this.sampleOrStream = function (callback) {
-      console.log('... sample() ===        sampling/streaming begins');
+      console.log('... sample() ===        sampling OR streaming begins - init connection');
 
       // init Twitter connection keys
       var T = new Twit({
@@ -797,7 +822,7 @@ var twitterSGSstart = function (parameters) {
 
         var stream = T.stream('statuses/filter', {
           track: p.track,
-          /*lang: 'en',*/
+          lang: p.lang,
           locations: p.locations
         });
 
@@ -808,48 +833,81 @@ var twitterSGSstart = function (parameters) {
          * */
         stream.on('error', function (error) {
           var date = new Date().toISOString();
-          console.log(date + '.....LOG EVENT ERROR');
-          throw error;
-        });
-        stream.on('limit', function (limitMessage) {
-          rNLimitIn++;
-          var date = new Date().toISOString();
-          //console.log(date + ' .....LOG EVENT LIMIT ' + limitMessage);
-          if (p.verbose == 'debug') {
-            return console.log(date + ' .....LOG EVENT LIMIT ' + JSON.stringify(limitMessage));
-          } else {
-            aliveMongoConn.collection('limit', function (error, collection) {
-              collection.insertOne(limitMessage);
+          if (p.verbose == 'debug' ) console.log(date + '.....LOG EVENT ERROR');
+          if (p.useMongoDB) {
+            aliveMongoConn.collection('errorMsg', function (error, collection) {
+              collection.insertOne(error);
             });
           }
+          throw error;
         });
-        stream.on('warning', function (warning) {
+        stream.on('limit', function (limitMsg) {
+          rNLimitIn++;
           var date = new Date().toISOString();
+          if (p.verbose == 'debug' ) console.log(date + ' .....LOG EVENT LIMIT ' + limitMsg);
+          if (p.useMongoDB) {
+            aliveMongoConn.collection('limitMsg', function (error, collection) {
+              collection.insertOne(limitMsg);
+            });
+          }
+          return console.log(date + ' .....LOG EVENT LIMIT ' + JSON.stringify(limitMsg));
+        });
+        stream.on('warning', function (warningMsg) {
+          var date = new Date().toISOString();
+          if (p.useMongoDB) {
+            aliveMongoConn.collection('warningMsg', function (error, collection) {
+              collection.insertOne(warningMsg);
+            });
+          }
           return console.log(date + ' .....LOG EVENT WARNING warning is ' + warning);
         });
-        stream.on('disconnect', function (disconnectMessage) {
+        stream.on('disconnect', function (disconnectMsg) {
           var date = new Date().toISOString();
-          //console.log();
+          if (p.useMongoDB) {
+            aliveMongoConn.collection('disconnectMsg', function (error, collection) {
+              collection.insertOne(disconnectMessage);
+            });
+          }
           return console.log(date + ' .....LOG EVENT DISCONNECT disconnectMessage is ' + disconnectMessage);
         });
         stream.on('reconnect', function (request, response, connectInterval) {
           var date = new Date().toISOString();
-          console.log(date + ' .....LOG EVENT RECONNECT connectInterval is ' + connectInterval);
+          if (p.verbose == 'debug' ) {
+            console.log(request);
+            console.log(response);
+            console.log(connectInterval);
+            console.log(date + ' .....LOG EVENT RECONNECT connectInterval is ' + connectInterval);
+          }
           throw new Error("Something went badly wrong - ending script. Forever - restart!!!");
-          //console.log(request);
-          //console.log(response);
-          //console.log(connectInterval);
         });
         stream.on('status_withheld', function (withheldMsg) {
+          if (p.verbose == 'debug' ) console.log(date + ' .....LOG EVENT LIMIT ' + withheldMsg);
           var date = new Date().toISOString();
+          if (p.useMongoDB) {
+            aliveMongoConn.collection('sWithheldMsg', function (error, collection) {
+              collection.insertOne(withheldMsg);
+            });
+          }
           return console.log(date + ' .....LOG EVENT STATUSWITHHELD statusWitheld is ' + withheldMsg);
         });
         stream.on('user_withheld', function (withheldMsg) {
+          if (p.verbose == 'debug' ) console.log(date + ' .....LOG EVENT LIMIT ' + withheldMsg);
           var date = new Date().toISOString();
+          if (p.useMongoDB) {
+            aliveMongoConn.collection('uWithheldMsg', function (error, collection) {
+              collection.insertOne(withheldMsg);
+            });
+          }
           return console.log(date + ' .....LOG EVENT USERWITHHELD userWitheld is ' + withheldMsg);
         });
         stream.on('connected', function (response) {
+          if (p.verbose == 'debug' ) console.log(date + ' .....LOG EVENT LIMIT ' + response);
           var date = new Date().toISOString();
+          // if (p.useMongoDB) {
+          //   aliveMongoConn.collection('connectedMsg', function (error, collection) {
+          //     collection.insertOne(response);
+          //   });
+          // }
           return console.log(date + ' .....LOG EVENT CONNECTED response is ' + response);
         });
 

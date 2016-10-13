@@ -67,6 +67,9 @@ var parameters = {
     /*
      * STORAGE CONNECTION
      */
+    createNewDb:        false,          // change or use detault
+    indexMongo:         false,
+    indexPg:            false,
     // MongoDB
     useMongoDB:         false,          // change or use detault
     hostMongo:          'localhost',    // change or use detault

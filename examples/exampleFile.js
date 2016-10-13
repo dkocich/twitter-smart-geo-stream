@@ -8,9 +8,10 @@ parameters = {
      *  var SanFrancisco = ['-125.75', '20.8', '-101.75', '50.8'];
      */
     track:              'apple',
+    lang:               '',
     locations:          ['-180.0', '-90.0', '180.0', '90.0'],
 
-    sampleSize:         1000,              // any number OR 0 as infinity
+    sampleSize:         100,              // any number OR 0 as infinity
     calcStats:          true,           // true - false
     verbose:            'production',    //'production' 'debug'
 
@@ -27,6 +28,9 @@ parameters = {
     /*
      * STORAGE CONNECTION
      */
+    createNewDb:        true,
+    indexMongo:         false,
+    indexPg:            false,
     // MongoDB
     useMongoDB:         true,          // change or use detault
     hostMongo:          'localhost',    // change or use detault
