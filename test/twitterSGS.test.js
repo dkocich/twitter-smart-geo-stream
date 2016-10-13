@@ -1,33 +1,35 @@
 'use strict';
 
+console.log("... NO TESTS CURRENTLY ...")
+
 // TODO WRITE SOME TESTS!!!
 // http://thenodeway.io/posts/testing-essentials/
-
-var should = require('chai').should(),
-    expect = require('chai').expect,
-    twitterSMG = require('./twitterSMG'),
-    // escape = scapegoat.escape,
-    // unescape = scapegoat.unescape,
-    initiate = twitterSMG.initiate;
-
-describe('#initiate', function() {
-    var p = {
-      apikey: 'aaa'
-    , apisecret: 'bbb'
-    , sampleSize: 10
-    };
-
-    it('should check if object exists', function(parameters) {
-        var result = initiate( p );
-        expect(result).to.equal( p );
-    });
-
-    it('should check if attributes are strings', function(parameters) {
-        var result = initiate( p );
-        expect(result).to.equal( p );
-    });
-
-});
+//
+// var should = require('chai').should(),
+//     expect = require('chai').expect,
+//     twitterSMG = require('./twitterSMG'),
+//     // escape = scapegoat.escape,
+//     // unescape = scapegoat.unescape,
+//     initiate = twitterSMG.initiate;
+//
+// describe('#initiate', function() {
+//     var p = {
+//       apikey: 'aaa'
+//     , apisecret: 'bbb'
+//     , sampleSize: 10
+//     };
+//
+//     it('should check if object exists', function(parameters) {
+//         var result = initiate( p );
+//         expect(result).to.equal( p );
+//     });
+//
+//     it('should check if attributes are strings', function(parameters) {
+//         var result = initiate( p );
+//         expect(result).to.equal( p );
+//     });
+//
+// });
 
 // describe('#escape', function() {
 //   it('converts & into &amp;', function() {
