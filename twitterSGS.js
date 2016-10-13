@@ -18,6 +18,8 @@ var async = require("async"),
   turf = require('turf-center'),
   Twit = require('twit'),
   tz = require('tz-lookup');
+var redis = require("redis"),
+  client = redis.createClient(32768, '192.168.99.100' , {no_ready_check: true} ); //[, options]);
 
 const fs = require('fs');
 const profiler = require('v8-profiler');
@@ -149,6 +151,11 @@ var twitterSGSstart = function (parameters) {
       if (p.hostPg == undefined) p.hostPg = 'localhost';
       if (p.portPg == undefined) p.portPg = '5432';
       if (p.dbPg == undefined) p.dbPg = 'twittersgs';
+      // Redis
+      if (p.useR == undefined) p.useR = false;
+      if (p.hostR == undefined) p.hostR = '192.168.99.100'; // default for Docker container, otherwise 127.0.0.1:6379
+      if (p.hostR == undefined) p.hostR = '32768';
+      if (p.dbR == undefined) p.dbR = 'twittersgs';
 
       // init connection string to MongoDB + PostgreSQL
       connStringMongo = 'mongodb://' + p.hostMongo + ':' + p.portMongo + '/' + p.dbMongo;
@@ -337,6 +344,23 @@ var twitterSGSstart = function (parameters) {
       } else {
         callback();
       }
+
+      // TODO ADD REDIS CONNECTION
+
+      client.on("error", function (err) {
+        console.log("Error " + err);
+      });
+      //
+      // client.set("string key", "string val", redis.print);
+      // client.hset("hash key", "hashtest 1", "some value", redis.print);
+      // client.hset(["hash key", "hashtest 2", "some other value"], redis.print);
+      // client.hkeys("hash key", function (err, replies) {
+      //   console.log(replies.length + " replies:");
+      //   replies.forEach(function (reply, i) {
+      //     console.log("    " + i + ": " + reply);
+      //   });
+      //   client.quit();
+      // });
 
       // // TODO only when we want to use PostgreSQL
       // if (p.usePostgresql) {
@@ -664,6 +688,12 @@ var twitterSGSstart = function (parameters) {
           if (p.debug == 'debug') console.log(tweet.tz);
           // var a = new Date().toLocaleString("en-US", {timeZone: tweet.tz });
           // tweet.localT = resLocalT;
+        }
+
+        if (p.checkSpam) {
+          client.incr( tweet.user.id_str , function(err, reply) {
+            console.log("vlozeno, nyni je ... ", reply); // 11
+          });
         }
 
         // TODO ZISKEJ CASOVOU ZONU Z POLOHY UZIVATELE

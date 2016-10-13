@@ -80,6 +80,11 @@ var parameters = {
     hostPg:             'localhost',    // change or use detault
     portPg:             '5432',         // change or use detault
     dbPg:               'twittersgs',   // change or use detault
+    // Redis
+    useR:               false,
+    hostR:              '192.168.99.100',// default for Docker container, otherwise 127.0.0.1:6379
+    portR:              '32768',
+    dbR:                'twittersgs',
 
     /*
      *  FILTER
