@@ -32,7 +32,7 @@ parameters = {
     indexMongo:         false,
     indexPg:            false,
     // MongoDB
-    useMongoDB:         true,          // change or use detault
+    useMongoDB:         false,          // change or use detault
     hostMongo:          'localhost',    // change or use detault
     portMongo:          '27017',        // change or use detault
     dbMongo:            'twittersgs',   // change or use detault
