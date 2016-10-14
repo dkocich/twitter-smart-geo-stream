@@ -8,6 +8,9 @@ Twitter Smart Geospatial Stream
 
 [![NodeICO](https://nodei.co/npm/twitter-smart-geo-stream.png?downloads=true&downloadRank=true&stars=true)](https://www.npmjs.com/twitter-smart-geo-stream)
 
+[![Known Vulnerabilities](https://snyk.io/test/npm/twitter-smart-geo-stream/badge.svg)](https://snyk.io/test/npm/twitter-smart-geo-stream)
+[![Known Vulnerabilities](https://snyk.io/test/github/dkocich/twitter-smart-geo-stream/badge.svg)](https://snyk.io/test/github/dkocich/twitter-smart-geo-stream)
+
 This project uses only stream of geospatial data coming from public Twitter stream.
 
 It is an outcome of my geospatial analysis of the available data and tries to utilize my personal experience to prevent others from time wasting processes with data harmonozation.
