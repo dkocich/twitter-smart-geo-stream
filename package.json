@@ -66,7 +66,7 @@
     "mongodb": "^2.2.16",
     "mongodb-fixtures": "0.0.5",
     "mongojs": "^2.4.0",
-    "pg": "^6.1.0",
+    "pg": "^6.1.2",
     "promise": "^7.1.1",
     "sentiment": "^2.0.0",
     "turf-center": "^3.0.12",
