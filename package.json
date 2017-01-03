@@ -63,7 +63,7 @@
     "ml-sentiment": "^2.0.6",
     "mocha": "^3.2.0",
     "moment": "^2.17.1",
-    "mongodb": "^2.2.16",
+    "mongodb": "^2.2.19",
     "mongodb-fixtures": "0.0.5",
     "mongojs": "^2.4.0",
     "pg": "^6.1.2",
