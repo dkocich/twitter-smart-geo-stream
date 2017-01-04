@@ -58,7 +58,7 @@
     "database-cleaner": "^1.2.0",
     "dotenv": "^2.0.0",
     "franc": "^2.0.0",
-    "geolib": "^2.0.21",
+    "geolib": "^2.0.22",
     "lunr": "^0.7.1",
     "ml-sentiment": "^2.0.6",
     "mocha": "^3.2.0",
