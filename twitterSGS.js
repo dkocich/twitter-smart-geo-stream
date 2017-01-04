@@ -22,7 +22,6 @@ var redis = require("redis"),
   client = redis.createClient(32768, '192.168.99.100', {no_ready_check: true}); //[, options]);
 
 const fs = require('fs');
-const profiler = require('v8-profiler');
 
 
 var databaseCleaner = new DatabaseCleaner('mongodb');
