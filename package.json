@@ -61,7 +61,7 @@
     "franc": "^2.0.0",
     "geolib": "^2.0.22",
     "lunr": "^0.7.2",
-    "ml-sentiment": "^2.0.6",
+    "ml-sentiment": "^2.0.7",
     "mocha": "^3.2.0",
     "moment": "^2.17.1",
     "mongodb": "^2.2.24",
