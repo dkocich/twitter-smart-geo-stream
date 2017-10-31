@@ -29,17 +29,9 @@ Project offers to:
 
 ## Requirements
 Install (optional):
- PostgreSQL     https://www.pipelinedb.com/download
- MongoDB        https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/
- Redis          http://redis.io/download
-
-## Installation
-  npm install twitter-smart-geo-stream
-  npm install twitter-smart-geo-stream --save (as dependency for your own modules)
-
-## Dependencies
-
-  npm install package.json (for development)
+- PostgreSQL     https://www.pipelinedb.com/download
+- MongoDB        https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/
+- Redis          http://redis.io/download
 
 ## Usage
 
@@ -153,17 +145,10 @@ Add unit tests for any new or changed functionality. Lint and test your code.
 
 For further classification and commit of source devices see './data/tweetsources.csv' (with LibreOfficeCalc) and create also './data/tweetsources.js' to use it in the project.
 
-## Scientific publication
-
-For more details please read:
-
-TO BE ANNOUNCED
-
-
 ## Release History
 
 based on http://semver.org/
 
-* 0.1.2 ...
-* 0.1.1 major changes but still buggy
+* 0.1.2
+* 0.1.1 still unstable
 * 0.1.0 Initial release
