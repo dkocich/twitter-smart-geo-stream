@@ -55,7 +55,7 @@
     "tz-lookup": "6.1.3",
     "v8-profiler": "^5.7.0",
     "wait-for": "2.1.1",
-    "snyk": "1.48.0"
+    "snyk": "1.49.2"
   },
   "dependencies": {}
 }
