@@ -38,7 +38,7 @@
     "dotenv": "4.0.0",
     "franc": "3.1.1",
     "geolib": "2.0.24",
-    "lunr": "2.1.4",
+    "lunr": "2.1.5",
     "ml-sentiment": "2.0.7",
     "mocha": "4.0.1",
     "moment": "2.19.2",
