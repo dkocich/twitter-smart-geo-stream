@@ -33,7 +33,7 @@
   "devDependencies": {
     "async": "2.6.0",
     "chai": "4.1.2",
-    "countries-list": "2.2.0",
+    "countries-list": "2.2.1",
     "database-cleaner": "1.2.0",
     "dotenv": "4.0.0",
     "franc": "3.1.1",
