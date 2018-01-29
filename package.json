@@ -35,7 +35,7 @@
     "chai": "4.1.2",
     "countries-list": "2.2.0",
     "database-cleaner": "1.2.0",
-    "dotenv": "4.0.0",
+    "dotenv": "5.0.0",
     "franc": "3.1.1",
     "geolib": "2.0.24",
     "lunr": "2.1.4",
