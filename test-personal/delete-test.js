@@ -3,16 +3,14 @@ var tweet = {
     // a: "aa",
     // b: "bb",
     // c: "cc",
-    coordinates: 'aaa'
-};
+  coordinates: 'aaa'
+}
 
 // delete tweet.
-console.log(tweet);
+console.log(tweet)
 
-
-const mediumKeyFilter = ['id_str', 'user.id_str', 'created_at', 'coordinates', 'place', 'entities'];
-const smallKeyFilter = ['id_str', 'user.id_str', 'created_at', 'coordinates'];
-
+const mediumKeyFilter = ['id_str', 'user.id_str', 'created_at', 'coordinates', 'place', 'entities']
+const smallKeyFilter = ['id_str', 'user.id_str', 'created_at', 'coordinates']
 
 // Object.keys(obj).forEach(function (key) {
 //     // do something with obj[key]
@@ -23,9 +21,8 @@ const smallKeyFilter = ['id_str', 'user.id_str', 'created_at', 'coordinates'];
 //     console.log('a');
 // }
 //
-var p = new Object();
-p.tweetSaveSize = 'medium';
+var p = new Object()
+p.tweetSaveSize = 'medium'
 
-
-console.log(tweet);
-console.log(saveTweet);
+console.log(tweet)
+console.log(saveTweet)

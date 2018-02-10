@@ -11,7 +11,6 @@
 // TO BE REMOVED?
 // const text = require('./data/texts.js').messages;
 
-
 // https://strongloop.com/strongblog/tips-optimizing-slow-code-in-nodejs/
 // function toggleProfiling() {
 //     if (profilerRunning) {
@@ -30,11 +29,6 @@
 // }
 // process.on('SIGUSR2', toggleProfiling);
 
-
-
-
-
-
 // EXAMPLEFILE
 
 // var Twit = require('twit');
@@ -52,17 +46,6 @@
 
 // console.log(process.env.EnvVarAcessToken);
 
-
-
-
-
-
-
-
-
-
-
-
 // POZNAMKA U ZAHAJENI STAHOVANI
 // {
 //     "config": {
@@ -78,26 +61,14 @@
 // console.log(T.consumer_key, T.consumer_secret, T.access_token, T.access_token_secret);
 // console.log(T.config.consumer_key, T.config.consumer_secret, T.config.access_token, T.config.access_token_secret);
 
-
-
-
-
-
-
-
-
-
-
 // var flog = function (a) {
 //     return console.log(a);
 // };
 
+// var twitterSMG = require('twitter-smart-geo-stream');
+// var sanFrancisco = [ '-122.75', '36.8', '-121.75', '37.8' ];
 
-//var twitterSMG = require('twitter-smart-geo-stream');
-//var sanFrancisco = [ '-122.75', '36.8', '-121.75', '37.8' ];
-
-
-/*var smgDruhy = new twitterSMG({
+/* var smgDruhy = new twitterSMG({
  locations: ['-10.0', '20.0', '10.0', '40.0'],
  sampleSize: 250,
  calcStats: true,
@@ -114,14 +85,13 @@
  access_token_secret: 'iqmAyOKWYTu6J5LwDnp2oLpruxaVENwm1TddFUDG9Reh1',
  timeout_ms: 60 * 1000,  // optional HTTP request timeout to apply to all requests.
  verbose: 'debug'
- });*/
+ }); */
 
 // spawn first instance to San Francisco
-//smgPrvni.start();
+// smgPrvni.start();
 
 // spawn second instance to Germany
-//smgDruhy.start();
-
+// smgDruhy.start();
 
 /**
  * Adds commas to a number

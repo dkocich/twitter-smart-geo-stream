@@ -1,6 +1,6 @@
-'use strict';
+'use strict'
 
-console.log("... NO TESTS CURRENTLY ...")
+console.log('... NO TESTS CURRENTLY ...')
 
 // TODO WRITE SOME TESTS!!!
 // http://thenodeway.io/posts/testing-essentials/
