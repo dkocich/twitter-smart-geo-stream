@@ -41,7 +41,7 @@
     "lunr": "2.1.4",
     "ml-sentiment": "2.0.7",
     "mocha": "4.0.1",
-    "moment": "2.19.2",
+    "moment": "2.19.3",
     "mongodb": "2.2.33",
     "mongodb-fixtures": "0.0.5",
     "mongojs": "2.5.0",
