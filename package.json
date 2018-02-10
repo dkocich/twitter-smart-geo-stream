@@ -45,7 +45,7 @@
     "mongodb": "3.0.2",
     "mongodb-fixtures": "0.0.5",
     "mongojs": "2.5.0",
-    "pg": "7.4.0",
+    "pg": "7.4.1",
     "promise": "8.0.1",
     "redis": "2.8.0",
     "sentiment": "4.1.0",
