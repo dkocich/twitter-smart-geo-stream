@@ -44,7 +44,7 @@
     "moment": "2.19.2",
     "mongodb": "2.2.33",
     "mongodb-fixtures": "0.0.5",
-    "mongojs": "2.4.1",
+    "mongojs": "2.5.0",
     "pg": "7.4.0",
     "promise": "8.0.1",
     "redis": "2.8.0",
