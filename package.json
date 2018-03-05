@@ -44,7 +44,7 @@
     "ml-sentiment": "2.0.7",
     "mocha": "5.0.0",
     "moment": "2.20.1",
-    "mongodb": "3.0.2",
+    "mongodb": "3.0.4",
     "mongodb-fixtures": "0.0.5",
     "mongojs": "2.5.0",
     "pg": "7.4.1",
