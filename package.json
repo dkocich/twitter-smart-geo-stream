@@ -51,7 +51,7 @@
     "promise": "8.0.1",
     "redis": "2.8.0",
     "sentiment": "4.2.0",
-    "snyk": "1.69.7",
+    "snyk": "1.70.1",
     "standard": "10.0.3",
     "turf-center": "3.0.12",
     "turf-inside": "3.0.12",
