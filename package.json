@@ -42,7 +42,7 @@
     "geolib": "2.0.24",
     "lunr": "2.1.5",
     "ml-sentiment": "2.0.7",
-    "mocha": "5.0.0",
+    "mocha": "6.0.0",
     "moment": "2.20.1",
     "mongodb": "3.0.2",
     "mongodb-fixtures": "0.0.5",
